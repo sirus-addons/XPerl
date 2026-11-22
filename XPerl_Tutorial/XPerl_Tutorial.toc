@@ -4,9 +4,9 @@
 ## Title-ruRU: X-Perl |cffeda55fУчебное пособие|r |cFF40FF40(LoadOnDemand)|r
 ## Title-zhCN: X-Perl |cffeda55f教程|r
 ## Title-zhTW: X-Perl |cffeda55f新手教學|r 由 |cFFFF8080Zek|r 開發 |cFF40FF40(隨機載入)|r
-## Notes: |@Version: 1@|Give Tutorial tips for new users.
-## Notes-ruRU: |@Version: 1@|Отображает подсказки по настройке фреймов.
-## Notes-zhTW: |@Version: 1@|提供新使用者簡單的使用教學.
+## Notes: |@Version: 2@|Give Tutorial tips for new users.
+## Notes-ruRU: |@Version: 2@|Отображает подсказки по настройке фреймов.
+## Notes-zhTW: |@Version: 2@|提供新使用者簡單的使用教學.
 ## Author: Zek
 ## X-License: GNU GPL v3, 29 June 2007
 ## RequiredDeps: XPerl

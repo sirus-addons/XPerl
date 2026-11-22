@@ -1,5 +1,5 @@
 name: XPerl
 description: README.md
-version: 1
+version: 2
 category: 16
 directories: ["XPerl", "XPerl_ArcaneBar", "XPerl_CustomHighlight", "XPerl_Options", "XPerl_Party", "XPerl_PartyPet", "XPerl_Player", "XPerl_PlayerBuffs", "XPerl_PlayerPet", "XPerl_RaidAdmin", "XPerl_RaidFrames", "XPerl_RaidHelper", "XPerl_RaidMonitor", "XPerl_RaidPets", "XPerl_Target", "XPerl_TargetTarget", "XPerl_Tutorial"]

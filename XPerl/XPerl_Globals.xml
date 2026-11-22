@@ -12,6 +12,8 @@
 	<Script file="XPerl_Init.lua"/>
 	<Script file="XPerl_Voice.lua"/>
 	<Script file="XPerl_Slash.lua"/>
+	<Script file="XPerl_Profiles.lua"/>
+	<Script file="XPerl_HiddenDebuffs.lua"/>
 
 	<Button name="XPerl_BasicButton" virtual="true">
 		<Scripts>

@@ -42,7 +42,7 @@ local function XPerl_SlashHandler(msg)
 			local current
 			XPerl_Notice(XPERL_CONFIG_LIST)
 			for realmName,realmList in pairs(XPerlConfigNew) do
-				if (type(realmList) == "table" and realmName ~= "global" and realmName ~= "savedPositions") then
+				if (type(realmList) == "table" and realmName ~= "global" and realmName ~= "savedPositions" and realmName ~= "profiles") then
 					for playerName, realmSettings in pairs(realmList) do
 						if (strlower(realmName) == strlower(GetRealmName()) and strlower(playerName) == myName) then
 							current = XPERL_CONFIG_CURRENT
@@ -62,7 +62,7 @@ local function XPerl_SlashHandler(msg)
 				if (strlower(args[3]) ~= strlower(GetRealmName()) and strlower(args[4]) ~= strlower(UnitName("player"))) then
 
 					for realmName,realmList in pairs(XPerlConfigNew) do
-						if (strlower(realmName) == strlower(args[3]) and type(realmList) == "table" and realmName ~= "global" and realmName ~= "savedPositions") then
+						if (strlower(realmName) == strlower(args[3]) and type(realmList) == "table" and realmName ~= "global" and realmName ~= "savedPositions" and realmName ~= "profiles") then
 							for playerName, realmSettings in pairs(realmList) do
 								if (strlower(playerName) == strlower(args[4])) then
 									XPerlConfigNew[realmName][playerName] = nil

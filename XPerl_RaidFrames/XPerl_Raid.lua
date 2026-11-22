@@ -11,6 +11,10 @@ local ResArray = {}		-- List of currently active resserections in progress
 local buffUpdates = {}		-- Queue for buff updates after a roster change
 local raidLoaded
 local rosterUpdated
+local raidAttributesStale
+local lastRoster
+local rosterParts = {}
+local MAX_RAID_HEADERS = 10
 local percD = "%d"..PERCENT_SYMBOL
 local lastNamesList, lastName, lastWith, lastNamesCount		-- Stores with/without buff list (OnUpdate optimization)
 local fullyInitiallized
@@ -87,7 +91,7 @@ function XPerl_Raid_OnLoad(self)
 		self:RegisterEvent(event)
 	end
 
-	for i = 1,WoWclassCount do			-- Fix for WoW 2.1 UNIT_NAME_UPDATE issue
+	for i = 1,min(WoWclassCount, MAX_RAID_HEADERS) do			-- Fix for WoW 2.1 UNIT_NAME_UPDATE issue
 		_G["XPerl_Raid_Grp"..i]:UnregisterEvent("UNIT_NAME_UPDATE")
 		tinsert(raidHeaders, _G[XPERL_RAIDGRP_PREFIX..i])
 	end
@@ -134,25 +138,37 @@ end
 
 -- Setup1RaidFrame
 local function Setup1RaidFrame(self)
+	local absorbExtra = (XPerl_Absorb_LayoutExtra and XPerl_Absorb_LayoutExtra(self)) or 0
+	local frameNatural
+	local statsNatural
+
 	if (rconf.mana) then
 		if (not self.statsFrame.manaBar) then
 			CreateManaBar(self)
 		end
 
+		frameNatural = 43
+		statsNatural = 26
 		if (not InCombatLockdown()) then
-			self:SetHeight(43)
+			self:SetHeight(frameNatural + absorbExtra)
 		end
-		self.statsFrame:SetHeight(26)
 		self.statsFrame.manaBar:Show()
 	else
+		frameNatural = 38
+		statsNatural = 21
 		if (not InCombatLockdown()) then
-			self:SetHeight(38)
+			self:SetHeight(frameNatural + absorbExtra)
 		end
-		self.statsFrame:SetHeight(21)
 		if (self.statsFrame.manaBar) then
 			self.statsFrame.manaBar:Hide()
 		end
 	end
+
+	self.xperlNaturalH = frameNatural
+	self.xperlAbsorbLayoutExtra = absorbExtra
+	self.statsFrame.xperlNaturalH = statsNatural
+	self.statsFrame.xperlAbsorbLayoutExtra = absorbExtra
+	self.statsFrame:SetHeight(statsNatural + absorbExtra)
 
 	if (rconf.percent) then
 		self.statsFrame.healthBar.text:Show()
@@ -168,6 +184,10 @@ local function Setup1RaidFrame(self)
 
 	if (XPerl_Voice) then
 		XPerl_Voice:Register(self, true)
+	end
+
+	if (XPerl_SetAbsorbBar) then
+		XPerl_SetAbsorbBar(self)
 	end
 end
 
@@ -469,6 +489,7 @@ function XPerl_Raid_UpdateHealth(self)
 	end
 
 	XPerl_SetExpectedHealth(self)
+	XPerl_SetAbsorbBar(self)
 
 	local name = UnitName(partyid)
 	local myRoster = XPerl_Roster[name]
@@ -945,8 +966,28 @@ end
 function XPerl_Raid_OnUpdate(self, elapsed)
 	if (rosterUpdated) then
 		rosterUpdated = nil
-		if (not InCombatLockdown()) then
+		if (InCombatLockdown()) then
+			-- Cannot touch secure headers in combat; rebuild once OOC.
+			XPerl_QueueOutOfCombat(XPerl_Raid_ApplyStaleAttributes)
+			raidAttributesStale = nil
+		else
 			XPerl_Raid_Position(self)
+			if (raidAttributesStale) then
+				raidAttributesStale = nil
+				local n = GetNumRaidMembers()
+				for i = 1,n do
+					local name, _, subgroup = GetRaidRosterInfo(i)
+					rosterParts[i] = (name or "")..(subgroup or 0)
+				end
+				for i = n + 1,#rosterParts do
+					rosterParts[i] = nil
+				end
+				local roster = table.concat(rosterParts, ",")
+				if (roster ~= lastRoster) then
+					lastRoster = roster
+					XPerl_Raid_ChangeAttributes()
+				end
+			end
 		end
 		if (XPerl_Custom) then
 			XPerl_Custom:UpdateUnits()
@@ -963,7 +1004,13 @@ function XPerl_Raid_OnUpdate(self, elapsed)
 	local enemyUnitList
 
 	self.time = self.time + elapsed
-	if (self.time >= 0.2) then
+	local interval = (conf and conf.rangeFinder and conf.rangeFinder.updateInterval) or 0.5
+	if (interval < 0.2) then
+		interval = 0.2
+	elseif (interval > 1) then
+		interval = 1
+	end
+	if (self.time >= interval) then
 		self.time = 0
 		someUpdate = true
 	end
@@ -1086,14 +1133,17 @@ function XPerl_Raid_HideShowRaid()
 		end
 	end
 
-	for i = 1,WoWclassCount do
-		if (rconf.group[i] == 1 and enable and (i < 9 or rconf.sortByClass) and not singleGroup) then
-			if (not raidHeaders[i]:IsShown()) then
-				raidHeaders[i]:Show()
-			end
-		else
-			if (raidHeaders[i]:IsShown()) then
-				raidHeaders[i]:Hide()
+	for i = 1,min(WoWclassCount, MAX_RAID_HEADERS) do
+		local groupHeader = raidHeaders[i]
+		if (groupHeader) then
+			if (rconf.group[i] == 1 and enable and (i < 9 or rconf.sortByClass) and not singleGroup) then
+				if (not groupHeader:IsShown()) then
+					groupHeader:Show()
+				end
+			else
+				if (groupHeader:IsShown()) then
+					groupHeader:Hide()
+				end
 			end
 		end
 	end
@@ -1115,8 +1165,6 @@ function XPerl_Raid_OnEvent(self, event, unit, ...)
 		else
 			func(self, unit, ...)
 		end
-	else
-XPerl_ShowMessage("EXTRA EVENT")
 	end
 end
 
@@ -1162,6 +1210,8 @@ function XPerl_Raid_Events:PLAYER_ENTERING_WORLD()
 
 	if (GetNumRaidMembers() > 0) then
 		XPerl_Raid_Frame:Show()
+		raidAttributesStale = true
+		rosterUpdated = true
 	end
 
 	if (IsInInstance()) then
@@ -1196,17 +1246,31 @@ do
 		end
 	end
 
-	-- RAID_ROSTER_UPDATE
-	function XPerl_Raid_Events:RAID_ROSTER_UPDATE()
+	local function NoteRaidRosterChange()
+		local num = GetNumRaidMembers()
+		-- SecureRaidGroupHeader does not always re-home units after mid-raid
+		-- joins/moves (common on Sirus forced invites). Force attribute refresh
+		-- so group columns match GetRaidRosterInfo once lockdown allows.
+		raidAttributesStale = true
 		rosterUpdated = true		-- Many roster updates can occur during 1 video frame, so we'll check everything at end of last one
 		BuildGuidMap()
-		if (GetNumRaidMembers() > 0) then
+		if (num > 0) then
 			XPerl_Raid_Frame:Show()
 		end
+	end
+
+	-- RAID_ROSTER_UPDATE
+	function XPerl_Raid_Events:RAID_ROSTER_UPDATE()
+		NoteRaidRosterChange()
 	end
 	
 	function XPerl_Raid_Events:PLAYER_LOGIN()
 		BuildGuidMap()
+		if (GetNumRaidMembers() > 0) then
+			raidAttributesStale = true
+			rosterUpdated = true
+			XPerl_Raid_Frame:Show()
+		end
 	end
 end
 
@@ -1635,7 +1699,7 @@ function XPerl_Raid_Position(self)
 	SetRaidRoster()
 	XPerl_RaidTitles()
 
-	if (conf.party.smallRaid and fullyInitiallized and not InCombatLockdown()) then
+	if (fullyInitiallized and not InCombatLockdown()) then
 		XPerl_Raid_HideShowRaid()
 	end
 end
@@ -2095,10 +2159,15 @@ local function SetMainHeaderAttributes(self)
 end
 
 -- XPerl_Raid_SetAttributes
+function XPerl_Raid_ApplyStaleAttributes()
+	XPerl_Raid_ChangeAttributes()
+	XPerl_Raid_Position(XPerl_Raid_Frame)
+end
+
 function XPerl_Raid_ChangeAttributes()
 
 	if (InCombatLockdown()) then
-		tinsert(XPerl_OutOfCombatQueue, XPerl_Raid_ChangeAttributes)
+		XPerl_QueueOutOfCombat(XPerl_Raid_ChangeAttributes)
 		return
 	end
 
@@ -2130,11 +2199,12 @@ function XPerl_Raid_ChangeAttributes()
 			return ""
 		else
 			local f
+			local invalid
 			if (rconf.group[n]) then
 				f = tostring(n)
 			end
 
-			for i = 1,WoWclassCount do
+			for i = 1,min(WoWclassCount, MAX_RAID_HEADERS) do
 				if (not rconf.class[i]) then
 					invalid = true
 				end
@@ -2143,7 +2213,7 @@ function XPerl_Raid_ChangeAttributes()
 				rconf.class = DefaultRaidClasses()
 			end
 
-			for i = 1,WoWclassCount do
+			for i = 1,min(WoWclassCount, MAX_RAID_HEADERS) do
 				if (rconf.class[i].enable) then
 					if (not f) then
 						f = rconf.class[i].name
@@ -2152,12 +2222,16 @@ function XPerl_Raid_ChangeAttributes()
 					end
 				end
 			end
-			return f
+			return f or ""
 		end
 	end
 
-	for i = 1,rconf.sortByClass and WoWclassCount or 8 do
+	local headerCount = rconf.sortByClass and min(WoWclassCount, MAX_RAID_HEADERS) or 8
+	for i = 1,headerCount do
 		local groupHeader = raidHeaders[i]
+		if (not groupHeader) then
+			break
+		end
 
 		-- Hide this when we change attributes, so the whole re-calc is only done once, instead of for every attribute change
 		groupHeader:Hide()

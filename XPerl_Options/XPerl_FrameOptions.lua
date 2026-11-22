@@ -518,7 +518,7 @@ local function GetPlayerList()
 	if (XPerlConfigNew) then
 		local me = GetRealmName().." / "..UnitName("player")
 		for realmName, realmConfig in pairs(XPerlConfigNew) do
-			if (type(realmConfig) == "table" and realmName ~= "global" and realmName ~= "savedPositions") then
+			if (type(realmConfig) == "table" and realmName ~= "global" and realmName ~= "savedPositions" and realmName ~= "profiles") then
 				for playerName, settings in pairs(realmConfig) do
 					local entry = realmName.." / "..playerName
 
@@ -1616,7 +1616,6 @@ function XPerl_Options_ImportOldConfig(old)
 		highlight = {
 			enable			= Convert(old.RaidHighlights),
 			HOT			= Convert(old.RaidHighlightHoTs),
-			SHIELD			= Convert(old.RaidHighlightShields),
 			AGGRO			= Convert(old.RaidHighlightAggro),
 			MISSING			= Convert(old.RaidHighlightMissing),
 			all			= Convert(old.RaidHighlightMissingAll),
@@ -2062,6 +2061,145 @@ function XPerl_Options_Defaults(new)
 	XPerl_MakeDefaultConfig(new)
 end
 
+if (not XPerl_Absorb_Defaults) then
+	function XPerl_Absorb_Defaults()
+		return {
+			enable		= 1,
+			party		= 1,
+			raid		= 1,
+			texture		= {"Default", "Interface\\TargetingFrame\\UI-StatusBar"},
+			color		= {r = 0.4, g = 0.7, b = 1.0},
+			separateBar	= 1,
+			overlay		= nil,
+			healAbsorb	= {
+				enable		= nil,
+				texture		= {"Default", "Interface\\TargetingFrame\\UI-StatusBar"},
+				color		= {r = 0.9, g = 0.2, b = 0.4},
+				separateBar	= nil,
+				overlay		= 1,
+			},
+		}
+	end
+end
+
+if (not XPerl_Absorb_EnsureConfig) then
+	function XPerl_Absorb_EnsureConfig(db)
+		if (not db) then
+			return XPerl_Absorb_Defaults()
+		end
+		if (not db.absorb) then
+			db.absorb = XPerl_Absorb_Defaults()
+		elseif (not db.absorb.healAbsorb) then
+			db.absorb.healAbsorb = XPerl_Absorb_Defaults().healAbsorb
+		end
+		if (db.absorb and not db.absorb.color) then
+			db.absorb.color = XPerl_Absorb_Defaults().color
+		end
+		if (db.absorb and db.absorb.healAbsorb and not db.absorb.healAbsorb.color) then
+			db.absorb.healAbsorb.color = XPerl_Absorb_Defaults().healAbsorb.color
+		end
+		return db.absorb
+	end
+end
+
+function XPerl_Options_Absorb_OnChanged()
+	if (XPerl_Absorb_RefreshAll) then
+		XPerl_Absorb_RefreshAll()
+	end
+end
+
+function XPerl_Options_HealPrediction_OnChanged()
+	if (XPerl_HealPrediction_RefreshAll) then
+		XPerl_HealPrediction_RefreshAll()
+	end
+end
+
+function XPerl_Options_Absorb_ModeClick(self)
+	local base = self.configBase
+	local idx = self.configIndex
+	if (not base or not idx) then
+		return
+	end
+	local t
+	if (base == "XPerlDB.absorb") then
+		t = XPerlDB.absorb
+	elseif (base == "XPerlDB.absorb.healAbsorb") then
+		t = XPerlDB.absorb and XPerlDB.absorb.healAbsorb
+	end
+	if (not t) then
+		return
+	end
+
+	if (idx == "separateBar") then
+		t.separateBar = 1
+		t.overlay = nil
+	else
+		t.overlay = 1
+		t.separateBar = nil
+	end
+
+	local sep, ovl
+	if (base == "XPerlDB.absorb") then
+		sep = XPerl_Options_Profiles_Absorb_ModeSeparate
+		ovl = XPerl_Options_Profiles_Absorb_ModeOverlay
+	else
+		sep = XPerl_Options_Profiles_Absorb_HealModeSeparate
+		ovl = XPerl_Options_Profiles_Absorb_HealModeOverlay
+	end
+	if (sep) then
+		sep:SetChecked(t.separateBar and true or nil)
+	end
+	if (ovl) then
+		ovl:SetChecked(t.overlay and true or nil)
+	end
+
+	XPerl_Options_Absorb_OnChanged()
+end
+
+function XPerl_Options_Absorb_OpenTexture(kind)
+	local sel = XPerl_Options_TextureSelect
+	if (not sel or not XPerlDB or not XPerlDB.absorb) then
+		return
+	end
+	XPerl_Absorb_EnsureConfig(XPerlDB)
+	sel.list = XPerl_AllBarTextures()
+	local cfg = (kind == "heal") and XPerlDB.absorb.healAbsorb or XPerlDB.absorb
+	local current = cfg and cfg.texture
+	sel.Selection = 1
+	if (current and sel.list) then
+		for k, v in pairs(sel.list) do
+			if (v[1] == current[1] and v[2] == current[2]) then
+				sel.Selection = k
+				break
+			end
+		end
+	end
+	sel.applyFunc = function(entry)
+		if (kind == "heal") then
+			XPerlDB.absorb.healAbsorb.texture = entry
+			local btn = XPerl_Options_Profiles_Absorb_HealTexture
+			if (btn) then
+				local label = _G[btn:GetName().."Name"]
+				if (label) then
+					label:SetText(entry[1])
+				end
+				btn:SetNormalTexture(entry[2])
+			end
+		else
+			XPerlDB.absorb.texture = entry
+			local btn = XPerl_Options_Profiles_Absorb_Texture
+			if (btn) then
+				local label = _G[btn:GetName().."Name"]
+				if (label) then
+					label:SetText(entry[1])
+				end
+				btn:SetNormalTexture(entry[2])
+			end
+		end
+		XPerl_Options_Absorb_OnChanged()
+	end
+	sel:Show()
+end
 
 -- XPerl_Global_ConfigDefault
 local function XPerl_Global_ConfigDefault(default)
@@ -2107,6 +2245,14 @@ local function XPerl_Global_ConfigDefault(default)
 		countdownStart	= 20,			-- 2.2.2
 	}
 
+	if (XPerl_HiddenDebuffs_Defaults) then
+		default.hiddenDebuffs = XPerl_HiddenDebuffs_Defaults()
+	end
+
+	default.absorb = XPerl_Absorb_Defaults()
+
+	default.healPrediction = 1
+
 	default.rangeFinder = XPerl_DefaultRangeFinder()
 
 	default.tooltip = {
@@ -2140,7 +2286,6 @@ local function XPerl_Global_ConfigDefault(default)
 	default.highlight = {
 		enable			= 1,
 		HOT			= 1,
-		SHIELD			= 1,
 		AGGRO			= 1,
 --		MISSING			= nil,
 --		all			= nil,
@@ -2539,6 +2684,7 @@ end
 function XPerl_DefaultRangeFinder()
 	return {						-- 2.1.7
 --		enabled		= e,	-- 2.3.4a Defaulting to OFF now, because of so many confused users complaining about faded frames. RTFM... (TODO: Write a manual)
+		updateInterval	= 0.5,			-- raid OnUpdate range/offline poll (was hard-coded 0.2)
 		Main		= {enabled = true, FadeAmount = 0.5, HealthLowPoint = 0.85},		-- PlusHealth = false,
 		NameFrame	= {FadeAmount = 0.5, HealthLowPoint = 0.85},
 		StatsFrame	= {FadeAmount = 0.5, HealthLowPoint = 0.85},
@@ -2999,6 +3145,12 @@ if (XPerl_UpgradeSettings) then
 				end
 			end
 
+			if (not old.colour) then
+				old.colour = {}
+			end
+			if (not old.colour.bar) then
+				old.colour.bar = XPerl_DefaultBarColours()
+			end
 			if (not old.colour.bar.runic_power or old.colour.bar.runic_power[1]) then
 				if (PowerBarColor) then
 					old.colour.bar.runic_power	= {r = PowerBarColor["RUNIC_POWER"].r, g = PowerBarColor["RUNIC_POWER"].g, b = PowerBarColor["RUNIC_POWER"].b}
@@ -3122,6 +3274,8 @@ if (XPerl_UpgradeSettings) then
 				old.tooltip.enableBuffs = 1
 			end
 		end
+
+		XPerl_Absorb_EnsureConfig(old)
 	end
 
 	-- XPerl_Options_UpgradeSettings()
@@ -3151,7 +3305,7 @@ if (XPerl_UpgradeSettings) then
 		end
 
 		for realmName,realmList in pairs(XPerlConfigNew) do
-			if (type(realmList) == "table" and realmName ~= "global" and realmName ~= "savedPositions") then
+			if (type(realmList) == "table" and realmName ~= "global" and realmName ~= "savedPositions" and realmName ~= "profiles") then
 				for playerName,settings in pairs(realmList) do
 					if (playerName == "global") then
 						-- Fix global settings being put in with realms
@@ -3171,4 +3325,187 @@ if (XPerl_UpgradeSettings) then
 		XPerl_Options_UpgradeSettings = nil
 		flist = nil
 	end
+end
+
+-- Hidden buffs/debuffs options UI (loaded with XPerl_Options)
+local HIDENDEBUFF_LIST_ROWS = 5
+local HIDENDEBUFF_ROW_HEIGHT = 14
+local HIDENDEBUFF_BUFFS_PREFIX = "XPerl_Options_Profiles_HiddenDebuffs_Buffs"
+local HIDENDEBUFF_DEBUFFS_PREFIX = "XPerl_Options_Profiles_HiddenDebuffs_Debuffs"
+local HIDENDEBUFF_BUFFS_SCROLL = "XPerl_Options_Profiles_HiddenDebuffs_BuffsScrollBar"
+local HIDENDEBUFF_DEBUFFS_SCROLL = "XPerl_Options_Profiles_HiddenDebuffs_DebuffsScrollBar"
+
+-- Manual add kind: true = debuff list (default), false = buff list
+local hiddenAuraManualIsDebuff = true
+
+local function HiddenDebuffTrim(s)
+	if (strtrim) then
+		return strtrim(s or "")
+	end
+	return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+-- string.sub by bytes breaks Cyrillic UTF-8 (shows as "?"); chop whole codepoints
+local function HiddenAuraUtf8ChopLast(s)
+	local len = string.len(s)
+	if (len == 0) then
+		return s
+	end
+	local i = len
+	while (i > 1) do
+		local b = string.byte(s, i)
+		if (b < 128 or b >= 192) then
+			break
+		end
+		i = i - 1
+	end
+	return string.sub(s, 1, i - 1)
+end
+
+local function HiddenAuraSetTruncatedText(fs, text, maxWidth)
+	fs:SetText(text)
+	if (not maxWidth or maxWidth < 8 or fs:GetStringWidth() <= maxWidth) then
+		return
+	end
+	local name = text
+	while (string.len(name) > 0 and fs:GetStringWidth() > maxWidth) do
+		name = HiddenAuraUtf8ChopLast(name)
+		if (string.len(name) == 0) then
+			fs:SetText("..")
+			return
+		end
+		fs:SetText(name.."..")
+	end
+end
+
+local function HiddenAuraRowMaxTextWidth(row)
+	-- Do not use nameText:GetWidth() — after truncation it follows string width and shrinks each scroll refill
+	if (row._maxTextW and row._maxTextW >= 40) then
+		return row._maxTextW
+	end
+	local remove = _G[row:GetName().."_Remove"]
+	local rowW = row:GetWidth()
+	if (not rowW or rowW < 8) then
+		local parent = row:GetParent()
+		rowW = parent and parent:GetWidth() or 0
+	end
+	local btnW = (remove and remove:GetWidth()) or 16
+	local maxW = rowW - btnW - 6
+	if (maxW >= 40) then
+		row._maxTextW = maxW
+		if (row.nameText) then
+			row.nameText:SetWidth(maxW)
+		end
+	end
+	return maxW
+end
+
+local function HiddenAuraFillColumn(prefix, scrollName, isDebuff)
+	if (not XPerl_HiddenDebuffs_GetSortedList) then
+		return
+	end
+	local rows = XPerl_HiddenDebuffs_GetSortedList(isDebuff)
+	local scroll = _G[scrollName]
+	local offset = 0
+	if (scroll) then
+		offset = FauxScrollFrame_GetOffset(scroll) or 0
+	end
+	for i = 1, HIDENDEBUFF_LIST_ROWS do
+		local row = _G[prefix..i]
+		if (row) then
+			local entry = rows[offset + i]
+			row.isDebuff = isDebuff and true or false
+			if (entry) then
+				row:Show()
+				row.spellKey = entry.key
+				row.spellName = entry.name
+				if (row.nameText) then
+					HiddenAuraSetTruncatedText(row.nameText, entry.name, HiddenAuraRowMaxTextWidth(row))
+				end
+			else
+				row:Hide()
+				row.spellKey = nil
+				row.spellName = nil
+			end
+		end
+	end
+	if (scroll) then
+		FauxScrollFrame_Update(scroll, #rows, HIDENDEBUFF_LIST_ROWS, HIDENDEBUFF_ROW_HEIGHT)
+		if (scroll.bar) then
+			scroll.bar:Hide()
+		end
+	end
+end
+
+function XPerl_Options_HiddenDebuffs_FillList()
+	HiddenAuraFillColumn(HIDENDEBUFF_BUFFS_PREFIX, HIDENDEBUFF_BUFFS_SCROLL, false)
+	HiddenAuraFillColumn(HIDENDEBUFF_DEBUFFS_PREFIX, HIDENDEBUFF_DEBUFFS_SCROLL, true)
+end
+
+function XPerl_Options_HiddenDebuffs_OnShow()
+	if (not XPerlDB) then
+		return
+	end
+	if (XPerl_HiddenDebuffs_EnsureConfig) then
+		XPerl_HiddenDebuffs_EnsureConfig(XPerlDB)
+	end
+	local buffScroll = _G[HIDENDEBUFF_BUFFS_SCROLL]
+	if (buffScroll) then
+		FauxScrollFrame_SetOffset(buffScroll, 0)
+	end
+	local debuffScroll = _G[HIDENDEBUFF_DEBUFFS_SCROLL]
+	if (debuffScroll) then
+		FauxScrollFrame_SetOffset(debuffScroll, 0)
+	end
+	XPerl_Options_HiddenDebuffs_SyncKindChecks()
+	XPerl_Options_HiddenDebuffs_FillList()
+end
+
+function XPerl_Options_HiddenDebuffs_SyncKindChecks()
+	local buff = XPerl_Options_Profiles_HiddenDebuffs_AddBuff
+	local debuff = XPerl_Options_Profiles_HiddenDebuffs_AddDebuff
+	if (buff) then
+		buff:SetChecked(not hiddenAuraManualIsDebuff)
+	end
+	if (debuff) then
+		debuff:SetChecked(hiddenAuraManualIsDebuff)
+	end
+end
+
+function XPerl_Options_HiddenDebuffs_KindClick(self)
+	if (not self) then
+		return
+	end
+	if (self.configIndex == "addBuff") then
+		hiddenAuraManualIsDebuff = false
+	else
+		hiddenAuraManualIsDebuff = true
+	end
+	XPerl_Options_HiddenDebuffs_SyncKindChecks()
+end
+
+function XPerl_Options_HiddenDebuffs_AddManual(editBox)
+	if (not editBox or not XPerl_HiddenDebuffs_Add) then
+		return
+	end
+	local text = HiddenDebuffTrim(editBox:GetText())
+	if (text == "") then
+		return
+	end
+	if (XPerl_HiddenDebuffs_Add(text, nil, hiddenAuraManualIsDebuff)) then
+		editBox:SetText("")
+	end
+end
+
+function XPerl_Options_HiddenDebuffs_RemoveRow(row)
+	if (row and XPerl_HiddenDebuffs_Remove) then
+		local key = row.spellKey or row.spellName
+		if (key ~= nil) then
+			XPerl_HiddenDebuffs_Remove(key, row.isDebuff and true or false)
+		end
+	end
+end
+
+if (XPerlDB) then
+	XPerl_Absorb_EnsureConfig(XPerlDB)
 end

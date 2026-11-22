@@ -3,10 +3,10 @@
 ## Title-ruRU: X-Perl |cffeda55fПитомец игрока|r
 ## Title-zhCN: X-Perl |cffeda55f玩家宠物|r
 ## Title-zhTW: X-Perl |cffeda55f玩家寵物|r 由 |cFFFF8080Zek|r 開發
-## Notes: |@Version: 1@|Replaces the default player's pet frame.
-## Notes-ruRU: |@Version: 1@|Заменяет стандартный фрейм питомца игрока.
-## Notes-deDE: |@Version: 1@|Ersetzt den Spielerbegleiterframe.
-## Notes-zhTW: |@Version: 1@|顯示玩家寵物框架.
+## Notes: |@Version: 2@|Replaces the default player's pet frame.
+## Notes-ruRU: |@Version: 2@|Заменяет стандартный фрейм питомца игрока.
+## Notes-deDE: |@Version: 2@|Ersetzt den Spielerbegleiterframe.
+## Notes-zhTW: |@Version: 2@|顯示玩家寵物框架.
 ## Author: Zek
 ## X-License: GNU GPL v3, 29 June 2007
 ## RequiredDeps: XPerl, XPerl_Player

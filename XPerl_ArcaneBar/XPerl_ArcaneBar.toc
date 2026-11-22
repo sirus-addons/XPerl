@@ -3,10 +3,10 @@
 ## Title-ruRU: X-Perl |cffeda55fПолосы применений|r
 ## Title-zhCN: X-Perl |cffeda55f施法条|r
 ## Title-zhTW: X-Perl |cffeda55f施法條|r 由 |cFFFF8080Zek|r 開發
-## Notes: |@Version: 1@|Gives player, pet, target, focus and party frames a casting bar.
-## Notes-ruRU: |@Version: 1@|Отображение полосок применения игрока, питомца, цели, фокуса и группы.
-## Notes-zhCN: |@Version: 1@|在玩家, 宠物, 目标, 焦点和队伍头像上增加施法条.
-## Notes-zhTW: |@Version: 1@|給予玩家, 寵物, 目標, focus 以及隊伍框架施法條進度顯示.
+## Notes: |@Version: 2@|Gives player, pet, target, focus and party frames a casting bar.
+## Notes-ruRU: |@Version: 2@|Отображение полосок применения игрока, питомца, цели, фокуса и группы.
+## Notes-zhCN: |@Version: 2@|在玩家, 宠物, 目标, 焦点和队伍头像上增加施法条.
+## Notes-zhTW: |@Version: 2@|給予玩家, 寵物, 目標, focus 以及隊伍框架施法條進度顯示.
 ## Author: Zek
 ## X-License: GNU GPL v3, 29 June 2007
 ## RequiredDeps: XPerl

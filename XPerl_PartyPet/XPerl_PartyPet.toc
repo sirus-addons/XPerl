@@ -3,10 +3,10 @@
 ## Title-ruRU: X-Perl |cffeda55fПитомцы группы|r
 ## Title-zhCN: X-Perl |cffeda55f队友宠物窗|r
 ## Title-zhTW: X-Perl |cffeda55f隊友寵物|r 由 |cFFFF8080Zek|r 開發
-## Notes: |@Version: 1@|Replaces the default party's pet frames.
-## Notes-ruRU: |@Version: 1@|Заменяет стандартные фреймы питомцев группы.
-## Notes-deDE: |@Version: 1@|Ersetzt die Gruppenbegleiterframes.
-## Notes-zhTW: |@Version: 1@|整合顯示原有隊員寵物框架.
+## Notes: |@Version: 2@|Replaces the default party's pet frames.
+## Notes-ruRU: |@Version: 2@|Заменяет стандартные фреймы питомцев группы.
+## Notes-deDE: |@Version: 2@|Ersetzt die Gruppenbegleiterframes.
+## Notes-zhTW: |@Version: 2@|整合顯示原有隊員寵物框架.
 ## Author: Zek
 ## X-License: GNU GPL v3, 29 June 2007
 ## RequiredDeps: XPerl, XPerl_Party

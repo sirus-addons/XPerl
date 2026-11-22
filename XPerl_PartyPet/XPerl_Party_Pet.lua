@@ -232,6 +232,7 @@ function XPerl_Party_Pet_UpdateHealth(self)
 	XPerl_ColourHealthBar(self, healthPct)
 
 	XPerl_SetExpectedHealth(self)
+	XPerl_SetAbsorbBar(self)
 
 	if (UnitIsDead(self.partyid)) then
 		self.statsFrame:SetGrey()
@@ -505,6 +506,7 @@ function XPerl_Party_Pet_Set_Bits1(self)
 
 	if (petconf.mana) then
 		self:SetHeight(50)
+		self.statsFrame.xperlNaturalH = 33
 		self.statsFrame:SetHeight(33)
 		self.statsFrame.manaBar:Show()
 		if (petconf.percent) then
@@ -514,6 +516,7 @@ function XPerl_Party_Pet_Set_Bits1(self)
 		end
 	else
 		self:SetHeight(40)
+		self.statsFrame.xperlNaturalH = 23
 		self.statsFrame:SetHeight(23)
 		self.statsFrame.manaBar:Hide()
 	end

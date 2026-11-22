@@ -146,6 +146,7 @@ end
 
 -- XPerl_TargetTarget_RaidIconUpdate
 local function XPerl_TargetTarget_RaidIconUpdate(self)
+	if not conf or not conf.target then return end
 	local frameRaidIcon = self.nameFrame.raidIcon
 	local frameNameFrame = self.nameFrame
 
@@ -416,9 +417,11 @@ local function Set(self)
 
 	if (self.conf.mana) then
 		self.statsFrame.manaBar:Show()
+		self.statsFrame.xperlNaturalH = 40
 		self.statsFrame:SetHeight(40)
 	else
 		self.statsFrame.manaBar:Hide()
+		self.statsFrame.xperlNaturalH = 30
 		self.statsFrame:SetHeight(30)
 	end
 

@@ -133,7 +133,7 @@ local function UpdateAssignedRoles(self)
 	end
 	
 	-- role icons option check by playerlin
-        if (conf.xperlOldroleicons) then
+        if (conf and conf.xperlOldroleicons) then
                 if isTank then
                         icon:SetTexture("Interface\\GroupFrame\\UI-Group-MainTankIcon")
                         icon:Show()
@@ -291,6 +291,9 @@ local function XPerl_Player_UpdateRep(self)
 			value = value - min
 			max = max - min
 			min = 0
+			if (max <= 0) then
+				max = 1
+			end
 
 			rb:SetMinMaxValues(min, max)
 			rb:SetValue(value)
@@ -321,9 +324,23 @@ local function XPerl_Player_UpdateXP(self)
 			local playerxp = UnitXP("player")
 			local playerxpmax = UnitXPMax("player")
 			local playerxprest = GetXPExhaustion() or 0
-			xpBar:SetMinMaxValues(0, playerxpmax)
-			restBar:SetMinMaxValues(0, playerxpmax)
-			xpBar:SetValue(playerxp)
+			local xpFrac, xpPerc
+
+			if (playerxpmax <= 0) then
+				xpFrac = 1
+				xpPerc = 100
+				xpBar:SetMinMaxValues(0, 1)
+				restBar:SetMinMaxValues(0, 1)
+				xpBar:SetValue(1)
+				restBar:SetValue(1)
+			else
+				xpFrac = playerxp / playerxpmax
+				xpPerc = xpFrac * 100
+				xpBar:SetMinMaxValues(0, playerxpmax)
+				restBar:SetMinMaxValues(0, playerxpmax)
+				xpBar:SetValue(playerxp)
+				restBar:SetValue(playerxp + playerxprest)
+			end
 
 			local w = xpBar:GetRight() - xpBar:GetLeft()
 			for mode = 1,3 do
@@ -350,7 +367,9 @@ local function XPerl_Player_UpdateXP(self)
 					color = {r = 0.6, g = 0, b = 0.6}
 				end
 
-				if (pconf.xpDeficit) then
+				if (playerxpmax <= 0) then
+					xpBar.text:SetText("")
+				elseif (pconf.xpDeficit) then
 					XPerl_SetValuedText(xpBar.text, playerxp - playerxpmax, playerxpmax, suffix)
 				else
 					XPerl_SetValuedText(xpBar.text, playerxp, playerxpmax, suffix)
@@ -362,13 +381,12 @@ local function XPerl_Player_UpdateXP(self)
 
 			xpBar:SetStatusBarColor(color.r, color.g, color.b, 1)
 			xpBar.bg:SetVertexColor(color.r, color.g, color.b, 0.25)
-			xpBar.tex:SetTexCoord(0, (playerxp * 100 / playerxpmax), 0, 1)
+			xpBar.tex:SetTexCoord(0, xpFrac, 0, 1)
 
-			restBar:SetValue(playerxp + playerxprest)
 			restBar:SetStatusBarColor(color.r, color.g, color.b, 0.5)
-			restBar.tex:SetTexCoord(0, (playerxp * 100 / playerxpmax), 0, 1)
+			restBar.tex:SetTexCoord(0, xpFrac, 0, 1)
 			restBar.bg:SetVertexColor(color.r, color.g, color.b, 0.5)
-			xpBar.percent:SetFormattedText(percD, (playerxp * 100) / playerxpmax)
+			xpBar.percent:SetFormattedText(percD, xpPerc)
 		end
 	end
 end
@@ -432,10 +450,19 @@ local function XPerl_Player_DruidBarUpdate(self)
 	end
 
 	local h = 40 + ((druidBarExtra + (pconf.repBar or 0) + (pconf.xpBar or 0)) * 10)
-	if (pconf.extendPortrait and not InCombatLockdown()) then
-		self.portraitFrame:SetHeight(62 + druidBarExtra * 10 + (((pconf.xpBar or 0) + (pconf.repBar or 0)) * 10))
+	local absorbExtra = (XPerl_Absorb_LayoutExtra and XPerl_Absorb_LayoutExtra(self)) or 0
+	local portraitNatural = 62 + druidBarExtra * 10 + (((pconf.xpBar or 0) + (pconf.repBar or 0)) * 10)
+	if (not pconf.extendPortrait) then
+		portraitNatural = 62
 	end
-	self.statsFrame:SetHeight(h)
+	if (not InCombatLockdown()) then
+		self.portraitFrame.xperlNaturalH = portraitNatural
+		self.portraitFrame.xperlAbsorbLayoutExtra = absorbExtra
+		self.portraitFrame:SetHeight(portraitNatural + absorbExtra)
+	end
+	self.statsFrame.xperlNaturalH = h
+	self.statsFrame.xperlAbsorbLayoutExtra = absorbExtra
+	self.statsFrame:SetHeight(h + absorbExtra)
 	XPerl_StatsFrameSetup(self, {druidBar, self.statsFrame.xpBar, self.statsFrame.repBar})
 	if (XPerl_Player_Buffs_Position) then
 		XPerl_Player_Buffs_Position(self)
@@ -457,7 +484,7 @@ local function XPerl_Player_UpdateMana(self)
 		mb.percent:SetFormattedText(percD, (playermana * 100.0) / playermanamax)
 	end
 	
-	mb.tex:SetTexCoord(0, max(0, (playermana / playermanamax)), 0, 1)
+	mb.tex:SetTexCoord(0, playermanamax > 0 and max(0, playermana / playermanamax) or 0, 0, 1)
 	
 	if (not self.statsFrame.greyMana) then
 		if (pconf.values) then
@@ -665,7 +692,7 @@ function XPerl_Player_Events:PLAYER_ENTERING_WORLD()
 			"UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_LEVEL", "UNIT_DISPLAYPOWER", "UNIT_NAME_UPDATE",
 			"UNIT_SPELLMISS", "UNIT_FACTION", "UNIT_PORTRAIT_UPDATE", "UNIT_FLAGS", "PLAYER_FLAGS_CHANGED",
 			"UNIT_SPELLCAST_SUCCEEDED", "UNIT_ENTERED_VEHICLE", "UNIT_EXITED_VEHICLE",
-			"UNIT_SPELLCAST_SENT", "PLAYER_TALENT_UPDATE"}
+			"UNIT_SPELLCAST_SENT", "PLAYER_TALENT_UPDATE", "UPDATE_SHAPESHIFT_FORM"}
 
 	--XPerl_UnitEvents(self, XPerl_Player_Events, {"UNIT_SPELLMISS", "UNIT_FACTION", "UNIT_PORTRAIT_UPDATE",
 	--						"UNIT_FLAGS", "PLAYER_FLAGS_CHANGED", "UNIT_SPELLCAST_SUCCEEDED"})
@@ -707,6 +734,20 @@ end
 -- UNIT_PORTRAIT_UPDATE
 function XPerl_Player_Events:UNIT_PORTRAIT_UPDATE()
 	XPerl_Unit_UpdatePortrait(self)
+end
+
+-- Druid / shapeshift (UNIT_PORTRAIT_UPDATE is not always fired on 3.3.5)
+function XPerl_Player_Events:UPDATE_SHAPESHIFT_FORM()
+	if (playerClass == "WARRIOR" or playerClass == "PALADIN" or playerClass == "DEATHKNIGHT" or playerClass == "HUNTER" or playerClass == "ROGUE") then
+		return
+	end
+	XPerl_Unit_UpdatePortrait(self)
+	if (XPerl_Target and UnitIsUnit("target", "player")) then
+		XPerl_Unit_UpdatePortrait(XPerl_Target)
+	end
+	if (XPerl_Focus and UnitIsUnit("focus", "player")) then
+		XPerl_Unit_UpdatePortrait(XPerl_Focus)
+	end
 end
 
 -- VARIABLES_LOADED
@@ -972,7 +1013,10 @@ function XPerl_Player_SetWidth(self)
 	end
 
 	local h = 40 + ((((self.statsFrame.druidBar and self.statsFrame.druidBar:IsShown()) or 0) + (pconf.repBar or 0) + (pconf.xpBar or 0)) * 10)
-	self.statsFrame:SetHeight(h)
+	local absorbExtra = (XPerl_Absorb_LayoutExtra and XPerl_Absorb_LayoutExtra(self)) or 0
+	self.statsFrame.xperlNaturalH = h
+	self.statsFrame.xperlAbsorbLayoutExtra = absorbExtra
+	self.statsFrame:SetHeight(h + absorbExtra)
 
 	self:SetWidth((pconf.portrait or 0) * 62 + (pconf.percent or 0) * 32 + 124 + pconf.size.width)
 	self:SetScale(pconf.scale)
@@ -1155,21 +1199,21 @@ function XPerl_Player_Set_Bits(self)
 
 	XPerl_Player_SetWidth(self)
 
+	local absorbExtra = (XPerl_Absorb_LayoutExtra and XPerl_Absorb_LayoutExtra(self)) or 0
+	local portraitNatural
+	if (pconf.extendPortrait or (self.runes and pconf.showRunes and pconf.dockRunes or self.holyp)) then
+		portraitNatural = 62 + (((pconf.xpBar or 0) + (pconf.repBar or 0)) * 10)
+	else
+		portraitNatural = 62
+	end
+	self.portraitFrame.xperlNaturalH = portraitNatural
+	self.portraitFrame.xperlAbsorbLayoutExtra = absorbExtra
+	self.portraitFrame:SetHeight(portraitNatural + absorbExtra)
+
 	local h1 = self.nameFrame:GetHeight() + self.statsFrame:GetHeight() - 2
 	local h2 = self.portraitFrame:GetHeight()
 	XPerl_SwitchAnchor(self, "TOPLEFT")
 	self:SetHeight(max(h1, h2))
-
-	self.highlight:ClearAllPoints()
-	if (pconf.extendPortrait or (self.runes and pconf.showRunes and pconf.dockRunes or self.holyp)) then
-		self.portraitFrame:SetHeight(62 + (((pconf.xpBar or 0) + (pconf.repBar or 0)) * 10))
-		--self.highlight:SetPoint("TOPLEFT", self.levelFrame, "TOPLEFT", 0, 0)
-		--self.highlight:SetPoint("BOTTOMRIGHT", self.statsFrame, "BOTTOMRIGHT", 0, 0)
-	else
-		self.portraitFrame:SetHeight(62)
-		--self.highlight:SetPoint("BOTTOMLEFT", self.classFrame, "BOTTOMLEFT", -2, -2)
-		--self.highlight:SetPoint("TOPRIGHT", self.nameFrame, "TOPRIGHT", 0, 0)
-	end
 
 	XPerl_Player_SetupDK(self)
 

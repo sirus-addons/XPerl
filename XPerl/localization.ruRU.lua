@@ -1,5 +1,6 @@
-﻿-- X-Perl UnitFrames
--- Author: Zek <Boodhoof-EU>
+-- X-Perl UnitFrames
+-- Original author: Zek <Boodhoof-EU>
+-- Sirus.su fork: Sesqiwake
 -- License: GNU GPL v3, 29 June 2007 (see LICENSE.txt)
 --Russian localization file translated by StingerSoft
 if (GetLocale() == "ruRU") then
@@ -7,7 +8,7 @@ if (GetLocale() == "ruRU") then
 XPerl_ProductName	    = "|cFFD00000X-Perl|r Фреймы Игроков"
 XPerl_Description	    = XPerl_ProductName.." от "..XPerl_Author
 XPerl_Version		    = XPerl_Description.." - "..XPerl_VersionNumber
-XPERL_LongDescription	= "Фреймы Игроков заменяются на новый вид Игроков, Питомцев, Группы, Цели, Целей Цели, Фокуса, Рейда"
+XPerl_LongDescription	= "Фреймы Игроков заменяются на новый вид Игроков, Питомцев, Группы, Цели, Целей Цели, Фокуса, Рейда"
 
 	XPERL_MINIMAP_HELP1		= "|c00FFFFFFЛевый rклик|r - опции  (а также |c0000FF00перемещение фреймов|r)"
 	XPERL_MINIMAP_HELP2		= "|c00FFFFFFПравый клик|r - перемещение иконки"
@@ -26,6 +27,11 @@ XPERL_LongDescription	= "Фреймы Игроков заменяются на �
 	XPERL_MINIMENU_RAIDSORT		= "Сортировка рейда"
 	XPERL_MINIMENU_RAIDSORT_GROUP	= "Сортировать по группам"
 	XPERL_MINIMENU_RAIDSORT_CLASS	= "Сортировать по классам"
+	XPERL_MINIMENU_PROFILES		= "Профили"
+	XPERL_MINIMAP_PROFILES_HINT	= "Профили раскладки (общие для аккаунта)"
+	XPERL_CONF_PROFILES_APPLIED		= "Профиль применён: %s"
+	XPERL_CONF_PROFILES_SAVED		= "Профиль сохранён: %s"
+	XPERL_CONF_PROFILES_NOT_FOUND		= "Профиль не найден: %s"
 
 	XPERL_TYPE_NOT_SPECIFIED	= "Не указанно"
 	XPERL_TYPE_PET				= PET		-- "Pet"

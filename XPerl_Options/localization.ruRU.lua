@@ -1,4 +1,4 @@
-﻿-- Russian localization file
+-- Russian localization file
 -- Translated by StingerSoft
 
 if (GetLocale() == "ruRU") then
@@ -16,6 +16,47 @@ XPERL_CONF_TITLE9						= "Цвета"
 XPERL_CONF_TITLE10						= "Помощник"
 XPERL_CONF_TITLE11						= "Монитор"
 XPERL_CONF_TITLE12						= "Админ"
+XPERL_CONF_TITLE13						= "Custom Sirus"
+
+XPERL_CONF_PROFILES						= "Профили"
+XPERL_CONF_PROFILES_DESC				= "Профили раскладки и настройки Sirus."
+XPERL_CONF_PROFILES_DESC2				= "Галочка — отметить, x — удалить, корзина — все отмеченные."
+XPERL_CONF_PROFILES_DELETE_DESC			= "Удалить отмеченные галочкой профили (или имя из поля, если ничего не отмечено)"
+XPERL_CONF_PROFILES_SAVE				= "Сохранить"
+XPERL_CONF_PROFILES_SAVE_DESC			= "Сохранить текущую раскладку как именованный профиль"
+XPERL_CONF_PROFILES_APPLY				= "Применить"
+XPERL_CONF_PROFILES_APPLY_DESC			= "Применить выбранный профиль"
+XPERL_CONF_PROFILES_AUTOAPPLY			= "Применять при входе"
+XPERL_CONF_PROFILES_AUTOAPPLY_DESC		= "Автоматически применять последний активный профиль при входе в мир"
+XPERL_CONF_PROFILES_ACTIVE_NONE			= "Активный профиль: нет"
+XPERL_CONF_PROFILES_ACTIVE_FMT			= "Активный профиль: |cff00ff00%s|r"
+XPERL_CONF_PROFILES_SAVED				= "Профиль сохранён: %s"
+XPERL_CONF_PROFILES_APPLIED				= "Профиль применён: %s"
+XPERL_CONF_PROFILES_NOT_FOUND				= "Профиль не найден: %s"
+
+XPERL_CONF_SIRUS_RESERVED				= "Зарезервировано"
+
+XPERL_CONF_HEALPREDICTION				= "Предикт исцеления"
+XPERL_CONF_HEALPREDICTION_ENABLE		= "Включить"
+XPERL_CONF_HEALPREDICTION_DESC			= "Показывать входящий хил наложением на полосу здоровья (LibHealComm)"
+
+XPERL_CONF_ABSORB						= "Поглощения"
+XPERL_CONF_ABSORB_ENABLE				= "Включить"
+XPERL_CONF_ABSORB_ENABLE_DESC			= "Показывать поглощение урона на фреймах (API Sirus)"
+XPERL_CONF_ABSORB_SHOW_ON				= "Показывать так же на:"
+XPERL_CONF_ABSORB_PARTY				= "Группа"
+XPERL_CONF_ABSORB_RAID					= "Рейд"
+XPERL_CONF_ABSORB_DISPLAY				= "Отображение"
+XPERL_CONF_ABSORB_TEXTURE				= "Текстура полосы"
+XPERL_CONF_ABSORB_TEXTURE_DEFAULT		= "По умолч."
+XPERL_CONF_ABSORB_COLOR					= "Цвет полосы"
+XPERL_CONF_ABSORB_COLOR_DESC			= "Выбрать цвет полосы поглощения"
+XPERL_CONF_ABSORB_MODE_SEPARATE			= "Отд. полоса"
+XPERL_CONF_ABSORB_MODE_SEPARATE_DESC		= "Отдельная полоса над здоровьем"
+XPERL_CONF_ABSORB_MODE_OVERLAY			= "На HP"
+XPERL_CONF_ABSORB_MODE_OVERLAY_DESC		= "Наложение на полосу здоровья"
+XPERL_CONF_ABSORB_HEALABSORB			= "Погл. исцеления"
+XPERL_CONF_ABSORB_HEALABSORB_DESC		= "Снижение входящего хила (некротик и т.п.)"
 
 XPERL_CONF_OPTIONS_COLOUR				= "Сменить цвет в окне настроек"
 
@@ -161,6 +202,8 @@ XPERL_CONF_RANGEFINDER_DESC					= "Затухание любого фрейма 
 end
 XPERL_CONF_RANGEFADEAMOUNT					= "Степень затухание"
 XPERL_CONF_RANGEFADEAMOUNT_DESC				= "Регулировать эффект затухания фреймов от стандартной прозрачности когда кто либо вне досягаемости"
+XPERL_CONF_RANGEUPDATEINTERVAL				= "Интервал проверки"
+XPERL_CONF_RANGEUPDATEINTERVAL_DESC			= "Как часто рейд-фреймы проверяют дистанцию (сек). Больше = меньше нагрузка, медленнее затухание вне досягаемости"
 XPERL_CONF_CUSTOMSPELL						= "Пользовательское заклинание"
 XPERL_CONF_CUSTOMSPELL_DESC					= "Alt-Клик для сброса на стандарт"
 XPERL_CONF_RANGE_MAIN						= "Целый Фрейм"
@@ -802,6 +845,24 @@ XPERL_CONF_ALL_PERCENT					= "Процент"
 XPERL_CONF_ALL_PERCENT_DESC				= "Включает отображение ВСЕХ процентов"
 XPERL_CONF_ALL_WIDTHBONUS				= "Ширина"
 XPERL_CONF_ALL_WIDTHBONUS_DESC			= "Регулировка ширину всех фреймов"
+
+XPERL_CONF_HIDENDEBUFFS					= "Скрытие баф/дебаф"
+XPERL_CONF_HIDENDEBUFFS_ENABLE			= "Включить"
+XPERL_CONF_HIDENDEBUFFS_ENABLE_DESC		= "Скрывать выбранные баффы и дебаффы на фреймах ниже"
+XPERL_CONF_HIDENDEBUFFS_PLAYER			= "Игрок"
+XPERL_CONF_HIDENDEBUFFS_PARTY			= "Группа"
+XPERL_CONF_HIDENDEBUFFS_TARGET			= "Цель"
+XPERL_CONF_HIDENDEBUFFS_TOT				= "Цель цели"
+XPERL_CONF_HIDENDEBUFFS_FOCUS			= "Фокус"
+XPERL_CONF_HIDENDEBUFFS_FOT				= "Цель фокуса"
+XPERL_CONF_HIDENDEBUFFS_ADD				= "Добавить"
+XPERL_CONF_HIDENDEBUFFS_ADD_BUFF			= "Бафф"
+XPERL_CONF_HIDENDEBUFFS_ADD_DEBUFF			= "Дебафф"
+XPERL_CONF_HIDENDEBUFFS_BUFFS			= "Баффы"
+XPERL_CONF_HIDENDEBUFFS_DEBUFFS			= "Дебаффы"
+XPERL_CONF_HIDENDEBUFFS_HINT				= "Ctrl+Shift+ЛКМ по баффу/дебаффу при открытых настройках, либо ID / имя и галочка Бафф или Дебафф"
+XPERL_CONF_HIDENDEBUFFS_ADDED			= "|cFF33FF33[XPerl]|r Скрыт дебафф: %s"
+XPERL_CONF_HIDENDEBUFFS_ADDED_BUFF		= "|cFF33FF33[XPerl]|r Скрыт бафф: %s"
 
 XPERL_CONF_GLOBAL_BORDERS				= EMBLEM_BORDER	-- "Края"		Generic WoW lozalization
 XPERL_CONF_GLOBAL_BORDERS_DESC			= "Установить цвет и прозрачность для всех краёв фреймов"

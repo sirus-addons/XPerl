@@ -3,10 +3,10 @@
 ## Title-ruRU: X-Perl |cffeda55fИгрок|r
 ## Title-zhCN: X-Perl |cffeda55f玩家窗|r
 ## Title-zhTW: X-Perl |cffeda55f玩家框架|r 由 |cFFFF8080Zek|r 開發
-## Notes: |@Version: 1@|Replaces the default player frame.
-## Notes-ruRU: |@Version: 1@|Заменяет стандартный фрейм игрока.
-## Notes-deDE: |@Version: 1@|Ersetzt den Spielerframe.
-## Notes-zhTW: |@Version: 1@|提供顯示玩家頭像相關功能.
+## Notes: |@Version: 2@|Replaces the default player frame.
+## Notes-ruRU: |@Version: 2@|Заменяет стандартный фрейм игрока.
+## Notes-deDE: |@Version: 2@|Ersetzt den Spielerframe.
+## Notes-zhTW: |@Version: 2@|提供顯示玩家頭像相關功能.
 ## Author: Zek
 ## X-License: GNU GPL v3, 29 June 2007
 ## RequiredDeps: XPerl

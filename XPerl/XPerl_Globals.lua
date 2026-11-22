@@ -279,15 +279,14 @@ local function onEventPostSetup(self, event, unit, ...)
 			XPerl_OutOfCombatOptionSet = nil
 			XPerl_OptionActions()
 		end
-		for k,v in pairs(XPerl_OutOfCombatQueue) do
-			if (type(v) == "function") then
-				v()
-			elseif (type(v) == "table") then
+		local queue = XPerl_OutOfCombatQueue
+		XPerl_OutOfCombatQueue = {}
+		for i,v in ipairs(queue) do
+			if (v[2] == nil) then
+				v[1]()
+			else
 				v[1](v[2])
-			elseif (type(v) == "string") then
-				RunScript(v)
 			end
-			XPerl_OutOfCombatQueue[k] = nil
 		end
 
 	--elseif (event == "ADDON_ACTION_BLOCKED") then
@@ -535,6 +534,27 @@ function XPerl_ValidateSettings()
 			s	= {r = 0.25, g = 0.25, b = 0.25, a = 1},
 			e	= {r = 0.1, g = 0.1, b = 0.1, a = 0}
 		}
+	end
+
+	if (not conf.custom) then
+		conf.custom = {
+			enable = true,
+			alpha = 0.5,
+			blend = "ADD",
+		}
+	end
+
+	if (XPerl_HiddenDebuffs_EnsureConfig) then
+		XPerl_HiddenDebuffs_EnsureConfig(conf)
+	end
+
+	if (XPerl_Absorb_EnsureConfig) then
+		XPerl_Absorb_EnsureConfig(conf)
+	end
+
+	-- Existing characters: keep previous always-on heal prediction until toggled off
+	if (conf.healPrediction == nil) then
+		conf.healPrediction = 1
 	end
 
 	XPerl_ValidateSettings = nil

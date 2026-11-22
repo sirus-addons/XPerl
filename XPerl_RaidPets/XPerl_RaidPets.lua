@@ -341,6 +341,12 @@ local function SetMainHeaderAttributes(self)
 	self:SetAttribute("templateType", "Button")
 
 	self.initialConfigFunction = initialConfigFunction
+
+	if (rconf.enable and not InCombatLockdown() and not self:GetAttribute("child40")) then
+		self:SetAttribute("startingIndex", -39)
+		SecureGroupPetHeader_Update(self)
+		self:SetAttribute("startingIndex", 1)
+	end
 end
 
 -- XPerl_RaidPets_ChangeAttributes

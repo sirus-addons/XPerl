@@ -1,12 +1,13 @@
-﻿-- X-Perl UnitFrames
--- Author: Zek <Boodhoof-EU>
+-- X-Perl UnitFrames
+-- Original author: Zek <Boodhoof-EU>
+-- Sirus.su fork: Sesqiwake
 -- License: GNU GPL v3, 29 June 2007 (see LICENSE.txt)
 
 XPerl_ProductName		= "|cFFD00000X-Perl|r UnitFrames"
 XPerl_ShortProductName	= "|cFFD00000X-Perl|r"
 XPerl_Author			= "|cFFFF8080Zek|r"
 XPerl_Description		= XPerl_ProductName.." by "..XPerl_Author
-XPerl_VersionNumber 	= "3.1.0"
+XPerl_VersionNumber 	= "3.1.1"
 XPerl_Version			= XPerl_Description.." - "..XPerl_VersionNumber
 XPerl_LongDescription	= "UnitFrame replacement for new look Player, Pet, Party, Target, Target's Target, Focus, Raid"
 XPerl_ModMenuIcon		= "Interface\\Icons\\INV_Misc_Gem_Pearl_02"
@@ -29,6 +30,11 @@ XPERL_MINIMENU_ROSTERTEXT="Roster Text"
 XPERL_MINIMENU_RAIDSORT = "Raid Sort"
 XPERL_MINIMENU_RAIDSORT_GROUP = "Sort by Group"
 XPERL_MINIMENU_RAIDSORT_CLASS = "Sort by Class"
+XPERL_MINIMENU_PROFILES = "Profiles"
+XPERL_MINIMAP_PROFILES_HINT = "Layout profiles — pick one from the list"
+XPERL_CONF_PROFILES_APPLIED = "Profile applied: %s"
+XPERL_CONF_PROFILES_SAVED = "Profile saved: %s"
+XPERL_CONF_PROFILES_NOT_FOUND = "Profile not found: %s"
 
 XPERL_TYPE_NOT_SPECIFIED = "Not specified"
 XPERL_TYPE_PET		= PET			-- "Pet"
@@ -144,10 +150,6 @@ XPERL_HIGHLIGHT_SPELLS = {
 	pomSpells = {
 		[GetSpellInfo(33076)] = 30			-- Prayer of Mending
 	},
-	shieldSpells = {
-		--[GetSpellInfo(25218)] = 30,			-- Power Word: Shield
-		[GetSpellInfo(974)] = 600			-- Earth Shield	(old id32594)		-- TODO change me
-	},
 	healSpells = {
 		[GetSpellInfo(2061)] = 1,			-- Flash Heal (old id 25235)
 		[GetSpellInfo(2060)] = 3,			-- Greater Heal (old id 25213)
@@ -228,10 +230,6 @@ XPERL_HIGHLIGHT_SPELLS = {
 	},
 	pomSpells = {
 		[GetSpellInfo(33076)] = 30			-- Prayer of Mending
-	},
-	shieldSpells = {
-		--[GetSpellInfo(25218)] = 30,			-- Power Word: Shield
-		[GetSpellInfo(32594)] = 600			-- Earth Shield			-- TODO change me
 	},
 	healSpells = {
 		[GetSpellInfo(25235)] = 1,			-- Flash Heal

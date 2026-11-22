@@ -3,6 +3,7 @@
 -- License: GNU GPL v3, 29 June 2007 (see LICENSE.txt)
 
 local init_done, gradient, conf, doneOptions
+local lastName, lastWith, lastNamesList, lastNamesCount
 local errorCount = 0
 XPerl_RequestConfig(function(new) conf = new end, "$Revision: 396 $")
 
@@ -182,205 +183,190 @@ end
 
 local checkExpiring
 local function GetNamesWithoutBuff(spellName, with, filter)
-	if (spellName == lastName and with == lastWith and lastNamesList) then
-		return lastNamesList, lastNamesCount
-	end
+    if (spellName == lastName and with == lastWith and lastNamesList) then
+        return lastNamesList, lastNamesCount
+    end
 
-	local count = 0
-	local names
-	local unitName
+    local count = 0
+    local names
+    local unitName
 
-	local class = select(2, UnitClass("player"))
+    local class = select(2, UnitClass("player"))
 
-	if select(4, _G.GetBuildInfo()) >= 40000 then
-		if (not checkExpiring) then
-			local cet = {}
+    -- (остальная инициализация checkExpiring остается без изменений)
+    if select(4, _G.GetBuildInfo()) >= 40000 then
+        if (not checkExpiring) then
+            local cet = {}
+            if (class == "PRIEST" or IsRaidOfficer()) then
+                cet[GetSpellInfo(21562)] = 2
+                cet[GetSpellInfo(27683)] = 2
+            end
+            if (class == "DRUID" or IsRaidOfficer()) then
+                cet[GetSpellInfo(1126)] = 2
+                cet[GetSpellInfo(467)] = 1
+            end
+            if (class == "MAGE" or IsRaidOfficer()) then
+                cet[GetSpellInfo(1459)] = 2
+            end
+            if (class == "PALADIN" or IsRaidOfficer()) then
+                cet[GetSpellInfo(19740)] = 2
+                cet[GetSpellInfo(20217)] = 2
+            end
+            checkExpiring = cet
+        end
+    else
+        if (not checkExpiring) then
+            local cet = {}
+            if (class == "PRIEST" or IsRaidOfficer()) then
+                cet[GetSpellInfo(21562)] = 2
+                cet[GetSpellInfo(48162)] = 2
+                cet[GetSpellInfo(48073)] = 2
+                cet[GetSpellInfo(48074)] = 2
+                cet[GetSpellInfo(48169)] = 2
+                cet[GetSpellInfo(48170)] = 2
+            end
+            if (class == "DRUID" or IsRaidOfficer()) then
+                cet[GetSpellInfo(26990)] = 2
+                cet[GetSpellInfo(26991)] = 2
+                cet[GetSpellInfo(53307)] = 1
+            end
+            if (class == "MAGE" or IsRaidOfficer()) then
+                cet[GetSpellInfo(42995)] = 2
+                cet[GetSpellInfo(43002)] = 2
+                cet[GetSpellInfo(43015)] = 1
+                cet[GetSpellInfo(43017)] = 1
+            end
+            if (class == "PALADIN" or IsRaidOfficer()) then
+                cet[GetSpellInfo(27140)] = 2
+                cet[GetSpellInfo(27141)] = 2
+                cet[GetSpellInfo(27142)] = 2
+                cet[GetSpellInfo(27143)] = 2
+                cet[GetSpellInfo(20217)] = 2
+                cet[GetSpellInfo(25898)] = 2
+                cet[GetSpellInfo(20911)] = 2
+                cet[GetSpellInfo(25899)] = 2
+            end
+            checkExpiring = cet
+        end
+    end
 
-			if (class == "PRIEST" or IsRaidOfficer()) then
-				cet[GetSpellInfo(21562)] = 2			-- Sta
-				cet[GetSpellInfo(27683)] = 2			-- Shadow Prot
-			end
-		
-			if (class == "DRUID" or IsRaidOfficer()) then
-				cet[GetSpellInfo(1126)] = 2			-- Mark
-				cet[GetSpellInfo(467)] = 1			-- Thorns
-			end
-		
-			if (class == "MAGE" or IsRaidOfficer()) then
-				cet[GetSpellInfo(1459)] = 2			-- Int
-			end
+    local withList = XPerl_GetReusableTable()
 
-			if (class == "PALADIN" or IsRaidOfficer()) then
-				cet[GetSpellInfo(19740)] = 2			-- Blessing of Might
-				cet[GetSpellInfo(20217)] = 2			-- Blessing of Kings
-			end
+    for unitid, unitName, unitClass, group, zone, online, dead in XPerl_NextMember do
+        local use
 
-			checkExpiring = cet
-		end
-	else
-		if (not checkExpiring) then
-			local cet = {}
+        if (not conf.buffHelper.visible) then
+            use = true
+        else
+            if (conf.raid.sortByClass) then
+                if (conf.raid.class and conf.raid.class[group] and conf.raid.class[group].enable) then
+                    use = (unitClass == conf.raid.class[group].name)
+                else
+                    use = false
+                end
+            else
+                use = conf.raid.group and conf.raid.group[group]
+            end
+        end
 
-			if (class == "PRIEST" or IsRaidOfficer()) then
-				cet[GetSpellInfo(21562)] = 2			-- Sta
-				cet[GetSpellInfo(48162)] = 2			-- Sta
-				cet[GetSpellInfo(48073)] = 2			-- Spirit
-				cet[GetSpellInfo(48074)] = 2			-- Spirit
-				cet[GetSpellInfo(48169)] = 2			-- Shadow Prot
-				cet[GetSpellInfo(48170)] = 2			-- Shadow Prot
-			end
-		
-			if (class == "DRUID" or IsRaidOfficer()) then
-				cet[GetSpellInfo(26990)] = 2			-- Mark
-				cet[GetSpellInfo(26991)] = 2			-- Gift
-				cet[GetSpellInfo(53307)] = 1			-- Thorns
-			end
-		
-			if (class == "MAGE" or IsRaidOfficer()) then
-				cet[GetSpellInfo(42995)] = 2			-- Int
-				cet[GetSpellInfo(43002)] = 2			-- Int
-				cet[GetSpellInfo(43015)] = 1			-- Dampen
-				cet[GetSpellInfo(43017)] = 1			-- Amplify
-			end
+        if (unitName and use and online and not dead) then
+            local hasBuff = false
+            for num = 1,25 do
+                local name, rank, buffTexture, buffCount, _, fullDuration, endTime, isMine, isStealable = UnitAura(unitid, num, filter)
+                if (not name) then
+                    break
+                end
 
-			if (class == "PALADIN" or IsRaidOfficer()) then
-				cet[GetSpellInfo(27140)] = 2
-				cet[GetSpellInfo(27141)] = 2			-- Blessing of Might
-				cet[GetSpellInfo(27142)] = 2
-				cet[GetSpellInfo(27143)] = 2			-- Blessing of Wisdom
-				cet[GetSpellInfo(20217)] = 2
-				cet[GetSpellInfo(25898)] = 2			-- Blessing of Kings
-				cet[GetSpellInfo(20911)] = 2
-				cet[GetSpellInfo(25899)] = 2			-- Blessing of Sanctuary
-			end
+                if (name == spellName) then
+                    hasBuff = true
+                    break
+                else
+                    for dups,pair in pairs(matches) do
+                        if (name == pair[1] or (pair[2] and name == pair[2])) then
+                            if (spellName == pair[1] or (pair[2] and spellName == pair[2])) then
+                                hasBuff = true
+                                break
+                            end
+                        end
+                    end
+                    if hasBuff then break end
+                end
+            end
 
-			checkExpiring = cet
-		end
-	end
+            if ((with and hasBuff) or (not with and not hasBuff)) then
+                count = count + 1
 
-	local withList = XPerl_GetReusableTable()
-	for unitid, unitName, unitClass, group, zone, online, dead in XPerl_NextMember do
-		local use
+                if (conf.buffHelper.sort == "group") then
+                    if (not withList[group]) then
+                        withList[group] = XPerl_GetReusableTable()
+                    end
+                    tinsert(withList[group], {class = unitClass, ["name"] = unitName})
+                elseif (conf.buffHelper.sort == "class") then
+                    if (not withList[unitClass]) then
+                        withList[unitClass] = XPerl_GetReusableTable()
+                    end
+                    tinsert(withList[unitClass], unitName)
+                else
+                    local n = XPerl_GetReusableTable()
+                    tinsert(withList, n)
+                    n.class = unitClass
+                    n.name = unitName
+                end
+            end
+        end
+    end
 
-		if (not conf.buffHelper.visible) then
-			use = true
-		else
-			if (conf.raid.sortByClass) then
-				if (conf.raid.class[group].enable) then
-					use = unitClass == conf.raid.class[group].name
-				end
-			else
-				use = conf.raid.group[group]
-			end
-		end
+    if (conf.buffHelper.sort == "group") then
+        for i = 1,8 do
+            local list = withList[i]
+            if (list) then
+                sort(list, function(a,b) return a.name < b.name end)
 
-		if (unitName and use and online and not dead) then
-			local hasBuff
-			for num = 1,25 do
-			local name, rank, buffTexture, count, _, fullDuration, endTime, isMine, isStealable = UnitAura(unitid, num, filter)
-				if (not name) then
-					break
-				end
+                names = (names or "").."|r"..i..": "
+                for i,item in ipairs(list) do
+                    names = names..XPerlColourTable[item.class]..item.name.." "
+                end
+                names = names.."|r\r"
+            end
+            XPerl_FreeTable(list)
+        end
+    elseif (conf.buffHelper.sort == "class") then
+        for j,class in ipairs(classOrder) do
+            local list = withList[class]
+            if (list) then
+                sort(list)
 
-				if (name == spellName) then
-					hasBuff = true
-				else
-					for dups,pair in pairs(matches) do
-						if (name == pair[1] or name == pair[2]) then
-							if (spellName == pair[1] or spellName == pair[2]) then
-								hasBuff = true
-								break
-							end
-						end
-					end
-				end
-				if (hasBuff) then
-					if (without and checkExpiring) then
-						local found = checkExpiring[buffTextureNoPath]
+                for i,name in ipairs(list) do
+                    if (i == 1) then
+                        names = (names or "")..XPerlColourTable[class]
+                    end
+                    names = (names or "")..name.." "
+                end
 
-						if (found) then
-							if (endTime and endTime > 0 and endTime <= GetTime() + (found * 60)) then
-								GameTooltip:AddLine(format(XPERL_RAID_TOOLTIP_BUFFEXPIRING, XPerlColourTable[unitClass]..name.."|c", buffName, SecondsToTime(endTime - GetTime())), 1, 0.2, 0)
-							end
-						end
-					end
-					break
-				end
-			end
+                names = (names or "").."|r\r"
+            end
+            XPerl_FreeTable(list)
+        end
+    else
+        sort(withList, function(a,b) return a.name < b.name end)
+        for i,item in ipairs(withList) do
+            names = (names or "")..XPerlColourTable[item.class]..item.name.." "
+            XPerl_FreeTable(item)
+        end
 
-			if ((with and hasBuff) or (not with and not hasBuff)) then
-				count = count + 1
+        names = (names or "").."\r"
+    end
 
-				if (conf.buffHelper.sort == "group") then
-					if (not withList[group]) then
-						withList[group] = XPerl_GetReusableTable()
-					end
-					tinsert(withList[group], {class = unitClass, ["name"] = unitName})
-				elseif (conf.buffHelper.sort == "class") then
-					if (not withList[unitClass]) then
-						withList[unitClass] = XPerl_GetReusableTable()
-					end
-					tinsert(withList[unitClass], unitName)
-				else
-					local n = XPerl_GetReusableTable()
-					tinsert(withList, n)
-					n.class = unitClass
-					n.name = unitName
-				end
-			end
-		end
-	end
+    XPerl_FreeTable(withList)
 
-	if (conf.buffHelper.sort == "group") then
-		for i = 1,8 do
-			local list = withList[i]
-			if (list) then
-				sort(list, function(a,b) return a.name < b.name end)
+    lastNamesList = names
+    lastName = spellName
+    lastWith = with
+    lastNamesCount = count
 
-				names = (names or "").."|r"..i..": "
-				for i,item in ipairs(list) do
-					names = names..XPerlColourTable[item.class]..item.name.." "
-				end
-				names = names.."|r\r"
-			end
-			XPerl_FreeTable(list)
-		end
-	elseif (conf.buffHelper.sort == "class") then
-		for j,class in ipairs(classOrder) do
-			local list = withList[class]
-			if (list) then
-				sort(list)
-
-				for i,name in ipairs(list) do
-					if (i == 1) then
-						names = (names or "")..XPerlColourTable[class]
-					end
-					names = (names or "")..name.." "
-				end
-
-				names = (names or "").."|r\r"
-			end
-			XPerl_FreeTable(list)
-		end
-	else
-		sort(withList, function(a,b) return a.name < b.name end)
-		for i,item in ipairs(withList) do
-			names = (names or "")..XPerlColourTable[item.class]..item.name.." "
-			XPerl_FreeTable(item)
-		end
-
-		names = (names or "").."\r"
-	end
-
-	XPerl_FreeTable(withList)
-
-	lastNamesList = names
-	lastName = spellName
-	lastWith = with
-	lastNamesCount = count
-
-	return names, count
+    return names, count
 end
+
 
 local function UnitFullName(unit)
     local name, realm = UnitName(unit)
@@ -393,51 +379,140 @@ local function UnitFullName(unit)
 	end
 end
 
--- XPerl_ToolTip_AddBuffDuration
-local function XPerl_ToolTip_AddBuffDuration(self, partyid, buffID, filter)
-	local name, rank, buff, count, _, dur, max, caster, isStealable = UnitAura(partyid, buffID, filter)
+local function XPerl_GetAuraInfo(unit, index, filter)
+	if (not unit or not index) then
+		return
+	end
 
+	if (UnitAura) then
+		local name, rank, icon, count, dtype, dur, exp, caster, steal = UnitAura(unit, index, filter)
+		if (name) then
+			return name, rank, icon, count, dtype, dur, exp, caster, steal
+		end
+		name, rank, icon, count, dtype, dur, exp, caster, steal = UnitAura(unit, index, nil, nil, filter)
+		if (name) then
+			return name, rank, icon, count, dtype, dur, exp, caster, steal
+		end
+	end
+
+	local func = (filter == "HARMFUL") and UnitDebuff or UnitBuff
+	if (func) then
+		return func(unit, index, filter)
+	end
+end
+
+local function XPerl_ResolveCasterName(caster)
+	if (not caster or caster == "") then
+		return
+	end
+
+	if (caster == "player") then
+		return UnitFullName("player")
+	end
+
+	if (UnitExists(caster)) then
+		return UnitFullName(caster)
+	end
+
+	if (UnitTokenFromGUID and type(caster) == "string" and strsub(caster, 1, 6) == "Player") then
+		local token = UnitTokenFromGUID(caster)
+		if (token and UnitExists(token)) then
+			return UnitFullName(token)
+		end
+	end
+
+	if (type(caster) == "string" and not strmatch(caster, "^[0-9A-Fa-fxX]+$") and not strmatch(caster, "^Creature%-") and not strmatch(caster, "^Pet%-") and not strmatch(caster, "^Vehicle%-")) then
+		return caster
+	end
+end
+
+local function XPerl_AddCasterLine(tooltip, caster)
+	if (not conf.buffs.names) then
+		return
+	end
+
+	local casterName = XPerl_ResolveCasterName(caster)
+	if (not casterName) then
+		return
+	end
+
+	local c
+	local casterUnit = (UnitExists(caster) and caster) or nil
+	if (not casterUnit and UnitTokenFromGUID and type(caster) == "string" and strsub(caster, 1, 6) == "Player") then
+		casterUnit = UnitTokenFromGUID(caster)
+		if (casterUnit and not UnitExists(casterUnit)) then
+			casterUnit = nil
+		end
+	end
+
+	if (casterUnit and UnitIsPlayer(casterUnit)) then
+		local _, class = UnitClass(casterUnit)
+		c = class and (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class]
+	elseif (casterUnit) then
+		c = XPerl_ReactionColour(casterUnit)
+	end
+
+	if (c) then
+		tooltip:AddLine("Источник: "..casterName, c.r, c.g, c.b)
+	else
+		tooltip:AddLine("Источник: "..casterName)
+	end
+end
+
+function XPerl_AddBuffTooltipExtras(tooltip, partyid, buffID, filter)
+	if (not tooltip or not partyid or not buffID) then
+		return
+	end
+
+	local name, rank, buff, count, _, dur, max, caster, isStealable = XPerl_GetAuraInfo(partyid, buffID, filter)
+	
+	local dbg_with = XPERL_RAID_TOOLTIP_WITHBUFF
+	local dbg_without = XPERL_RAID_TOOLTIP_WITHOUTBUFF
 	if (GetNumPartyMembers() > 0 or GetNumRaidMembers() > 0) then
 		if (conf.buffHelper.enable and partyid and (UnitInParty(partyid) or UnitInRaid(partyid))) then
 			if (name) then
-				local names, count = GetNamesWithoutBuff(name, IsAltKeyDown(), filter)
-				if (names) then
-					if (IsAltKeyDown()) then
-						self:AddLine(format(XPERL_RAID_TOOLTIP_WITHBUFF, count), 0.3, 1, 0.2)
-					else
-						self:AddLine(format(XPERL_RAID_TOOLTIP_WITHOUTBUFF, count), 1, 0.3, 0.1)
-					end
+				local names, foundCount = GetNamesWithoutBuff(name, IsAltKeyDown(), filter)
 
+				local withFmt = dbg_with
+				local withoutFmt = dbg_without
+				if (not withFmt or withFmt == "") then
+					withFmt = "С баффом: (%s)"
+				end
+				if (not withoutFmt or withoutFmt == "") then
+					withoutFmt = "Без бафа: (%s)"
+				end
+
+				local cntStr = tostring(foundCount or 0)
+
+				local headerText
+				if (IsAltKeyDown()) then
+					headerText = format(withFmt, cntStr)
+					tooltip:AddLine(headerText, 0.3, 1, 0.2)
+				else
+					headerText = format(withoutFmt, cntStr)
+					tooltip:AddLine(headerText, 1, 0.3, 0.1)
+				end
+
+				if (names and names ~= "") then
 					if (conf.buffHelper.sort) then
-						self:AddLine(names, 0.5, 0.5, 0.5)
+						tooltip:AddLine(names, 0.5, 0.5, 0.5)
 					else
-						self:AddLine(names, 0.5, 0.5, 0.5, 1)
+						tooltip:AddLine(names, 0.5, 0.5, 0.5, 1)
 					end
 				end
 			end
 		end
 	end
 
-	if (caster and conf.buffs.names) then
-		local casterName = UnitFullName(caster)
-		if (casterName) then
-			local c
-			if (UnitIsPlayer(caster)) then
-				local _, class = UnitClass(caster)
-				c = class and (CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS)[class]
-			else
-				c = XPerl_ReactionColour(caster)
-			end
-			if (c) then
-				self:AddLine(casterName, c.r, c.g, c.b)
-			else				
-				self:AddLine(casterName)
-			end
-		end
-	end
+	XPerl_AddCasterLine(tooltip, caster)
 
-	GameTooltip:Show()
+	tooltip:Show()
 end
+
+local function XPerl_ToolTip_AddBuffDuration(self, partyid, buffID, filter)
+	XPerl_AddBuffTooltipExtras(self, partyid, buffID, filter)
+end
+
 
 -- Buff Tooltip Hook
 local function XPerl_GameTooltipSetUnitAura(self, unitId, buffId, filter)
@@ -457,7 +532,11 @@ function XPerl_Init()
 	init_done = true
 	if (GameTooltip.SetUnitAura) then
 		hooksecurefunc(GameTooltip, "SetUnitAura", XPerl_GameTooltipSetUnitAura)
+	end
+	if (GameTooltip.SetUnitBuff) then
 		hooksecurefunc(GameTooltip, "SetUnitBuff", XPerl_GameTooltipSetUnitBuff)
+	end
+	if (GameTooltip.SetUnitDebuff) then
 		hooksecurefunc(GameTooltip, "SetUnitDebuff", XPerl_GameTooltipSetUnitDebuff)
 	end
 
@@ -570,22 +649,30 @@ function XPerl_StatsFrameSetup(self, others, offset)
 	end
 
         local healthBar = StatsFrame.healthBar
+	if (not healthBar) then
+		return
+	end
         local healthBarText = healthBar.text
         local healthBarPercent = healthBar.percent
         local manaBar = StatsFrame.manaBar
-        local manaBarPercent = manaBar.percent
+        local manaBarPercent = manaBar and manaBar.percent
 	local otherBars = {}
+	local topBars = {}
 	local secondaryBarsShown = 0
+	local topBarsShown = 0
         local percentSize = 0
-	if (healthBarPercent:IsShown() or manaBarPercent:IsShown()) then
+	if ((healthBarPercent and healthBarPercent:IsShown()) or (manaBarPercent and manaBarPercent:IsShown())) then
 		percentSize = 35
 	end
 
 	offset = (offset or 0)
+
+	self.xperlStatsOthers = others
+	self.xperlStatsOffset = offset
 	
 	healthBar:SetWidth(0)
 
-	if (manaBar:IsShown()) then
+	if (manaBar and manaBar:IsShown()) then
 		secondaryBarsShown = secondaryBarsShown + 1
 		manaBar:SetWidth(0)
 	end
@@ -593,6 +680,18 @@ function XPerl_StatsFrameSetup(self, others, offset)
 	local needTicker = 0
 	if (StatsFrame.energyTicker) then
 		needTicker = 1
+	end
+
+	-- Separate absorb bars sit at the top of the stats block (inside, under nameFrame)
+	if (StatsFrame.xperlAbsorbBar and StatsFrame.xperlAbsorbBar:IsShown()) then
+		tinsert(topBars, StatsFrame.xperlAbsorbBar)
+		topBarsShown = topBarsShown + 1
+		StatsFrame.xperlAbsorbBar:SetWidth(0)
+	end
+	if (StatsFrame.xperlHealAbsorbBar and StatsFrame.xperlHealAbsorbBar:IsShown()) then
+		tinsert(topBars, StatsFrame.xperlHealAbsorbBar)
+		topBarsShown = topBarsShown + 1
+		StatsFrame.xperlHealAbsorbBar:SetWidth(0)
 	end
 
 	if (others) then
@@ -606,23 +705,55 @@ function XPerl_StatsFrameSetup(self, others, offset)
 			end
 		end
 	end
+
+	local topReserve = topBarsShown * 10
+	if (topBarsShown > 0) then
+		topReserve = topReserve + 2
+	end
+
+	-- Height for separate absorb rows comes from XPerl_Absorb (natural + extra)
+	local extra = topReserve
+	if (StatsFrame.xperlNaturalH) then
+		local want = StatsFrame.xperlNaturalH + extra
+		if (not InCombatLockdown() and math.abs((StatsFrame:GetHeight() or 0) - want) > 0.5) then
+			StatsFrame:SetHeight(want)
+		end
+		StatsFrame.xperlAbsorbLayoutExtra = extra
+	end
 	
 	if (conf.bar.fat) then       
-		if (StatsFrame == XPerl_Player_PetstatsFrame) then
-			healthBarText:SetFontObject(GameFontNormalSmall)
-		else
-			healthBarText:SetFontObject(GameFontNormal)
+		if (healthBarText) then
+			if (StatsFrame == XPerl_Player_PetstatsFrame) then
+				healthBarText:SetFontObject(GameFontNormalSmall)
+			else
+				healthBarText:SetFontObject(GameFontNormal)
+			end
+		end
+
+		local lastTop = nil
+		for i,bar in pairs(topBars) do
+			bar:ClearAllPoints()
+			if (not lastTop) then
+				bar:SetPoint("TOPLEFT", 5, -5)
+				bar:SetPoint("BOTTOMRIGHT", StatsFrame, "TOPRIGHT", -(5 + percentSize), -15)
+			else
+				bar:SetPoint("TOPLEFT", lastTop, "BOTTOMLEFT", 0, 0)
+				bar:SetPoint("BOTTOMRIGHT", lastTop, "BOTTOMRIGHT", 0, -10)
+			end
+			lastTop = bar
 		end
 
         	healthBar:ClearAllPoints()
-        	healthBar:SetPoint("TOPLEFT", 5, -5)
+        	healthBar:SetPoint("TOPLEFT", 5, -5 - topReserve)
         	healthBar:SetPoint("BOTTOMRIGHT", -(5 + percentSize), 5 + needTicker + (secondaryBarsShown * 10))
 
-        	manaBar:ClearAllPoints()
-        	manaBar:SetPoint("BOTTOMLEFT", 5, -5 + needTicker + (secondaryBarsShown * 10))
-        	manaBar:SetPoint("TOPRIGHT", healthBar, "BOTTOMRIGHT", 0, 0)
+		if (manaBar) then
+        		manaBar:ClearAllPoints()
+        		manaBar:SetPoint("BOTTOMLEFT", 5, -5 + needTicker + (secondaryBarsShown * 10))
+        		manaBar:SetPoint("TOPRIGHT", healthBar, "BOTTOMRIGHT", 0, 0)
+		end
 
-		local lastBar = manaBar
+		local lastBar = manaBar or healthBar
 		local tickerSpace = needTicker * 1.5
 		for i,bar in pairs(otherBars) do
 			if (bar:IsShown()) then
@@ -636,17 +767,39 @@ function XPerl_StatsFrameSetup(self, others, offset)
 			end
         	end
 	else
-		healthBarText:SetFontObject(GameFontNormalSmall)
+		if (healthBarText) then
+			healthBarText:SetFontObject(GameFontNormalSmall)
+		end
+
+		local lastTop = nil
+		for i,bar in pairs(topBars) do
+			bar:ClearAllPoints()
+			if (not lastTop) then
+				bar:SetPoint("TOPLEFT", 8, -9 + offset)
+				bar:SetPoint("BOTTOMRIGHT", StatsFrame, "TOPRIGHT", -(8 + percentSize), -19 + offset)
+			else
+				bar:SetPoint("TOPLEFT", lastTop, "BOTTOMLEFT", 0, -2)
+				bar:SetPoint("BOTTOMRIGHT", lastTop, "BOTTOMRIGHT", 0, -12)
+			end
+			lastTop = bar
+		end
 
         	healthBar:ClearAllPoints()
-        	healthBar:SetPoint("TOPLEFT", 8, -9 + offset)
-        	healthBar:SetPoint("BOTTOMRIGHT", StatsFrame, "TOPRIGHT", -(8 + percentSize), -19 + offset)
+		if (lastTop) then
+			healthBar:SetPoint("TOPLEFT", lastTop, "BOTTOMLEFT", 0, -2)
+			healthBar:SetPoint("BOTTOMRIGHT", lastTop, "BOTTOMRIGHT", 0, -12)
+		else
+        		healthBar:SetPoint("TOPLEFT", 8, -9 + offset)
+        		healthBar:SetPoint("BOTTOMRIGHT", StatsFrame, "TOPRIGHT", -(8 + percentSize), -19 + offset)
+		end
 
-        	manaBar:ClearAllPoints()
-        	manaBar:SetPoint("TOPLEFT", healthBar, "BOTTOMLEFT", 0, -2)
-        	manaBar:SetPoint("BOTTOMRIGHT", healthBar, "BOTTOMRIGHT", 0, -12)
+		if (manaBar) then
+        		manaBar:ClearAllPoints()
+        		manaBar:SetPoint("TOPLEFT", healthBar, "BOTTOMLEFT", 0, -2)
+        		manaBar:SetPoint("BOTTOMRIGHT", healthBar, "BOTTOMRIGHT", 0, -12)
+		end
 
-		local lastBar = manaBar
+		local lastBar = manaBar or healthBar
 		for i,bar in pairs(otherBars) do
 			if (bar:IsShown()) then
         	        	bar:ClearAllPoints()

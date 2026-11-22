@@ -1067,9 +1067,15 @@
 				if (not self.list) then
 					self.list = XPerl_AllBarTextures()
 				end
-				if (XPerlDB and XPerlDB.bar.texture and self.list) then
+				local current
+				if (self.applyGet) then
+					current = self.applyGet()
+				elseif (XPerlDB and XPerlDB.bar and XPerlDB.bar.texture) then
+					current = XPerlDB.bar.texture
+				end
+				if (current and self.list) then
 					for k,v in pairs(self.list) do
-						if (XPerlDB.bar.texture[1] == v[1] and XPerlDB.bar.texture[2] == v[2]) then
+						if (current[1] == v[1] and current[2] == v[2]) then
 							self.Selection = k
 						end
 					end
@@ -1209,9 +1215,18 @@
 				<Scripts>
 					<OnClick>
 						if (XPerlDB) then
-							XPerlDB.bar.texture = self:GetParent().list[self:GetParent().Selection]
+							local parent = self:GetParent()
+							local entry = parent.list and parent.list[parent.Selection]
+							if (entry) then
+								if (parent.applyFunc) then
+									parent.applyFunc(entry)
+									parent.applyFunc = nil
+								else
+									XPerlDB.bar.texture = entry
+									XPerl_SetBarTextures()
+								end
+							end
 							XPerl_Options_TextureSelect:Hide()
-							XPerl_SetBarTextures()
 						end
 					</OnClick>
 				</Scripts>
@@ -1698,6 +1713,157 @@
 		<HighlightTexture file="Interface\QuestFrame\UI-QuestTitleHighlight" alphaMode="ADD"/>
 	</Button>
 
+	<Frame name="XPerlHiddenDebuffRowTemplate" virtual="true" enableMouse="true">
+		<Size>
+			<AbsDimension x="1" y="14"/>
+		</Size>
+		<Frames>
+			<Button name="$parent_Remove" inherits="UIPanelButtonTemplate" text="x">
+				<Size><AbsDimension x="16" y="14"/></Size>
+				<Anchors>
+					<Anchor point="RIGHT">
+						<Offset><AbsDimension x="-2" y="0"/></Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						XPerl_Options_HiddenDebuffs_RemoveRow(self:GetParent())
+					</OnClick>
+				</Scripts>
+			</Button>
+		</Frames>
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString name="$parentName" inherits="GameFontHighlightSmall" justifyH="LEFT" nonspacewrap="false">
+					<Anchors>
+						<Anchor point="LEFT">
+							<Offset><AbsDimension x="2" y="0"/></Offset>
+						</Anchor>
+						<Anchor point="RIGHT" relativeTo="$parent_Remove" relativePoint="LEFT">
+							<Offset><AbsDimension x="-2" y="0"/></Offset>
+						</Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnLoad>
+				self.nameText = _G[self:GetName().."Name"]
+			</OnLoad>
+			<OnEnter>
+				if (self.spellName and self.spellName ~= "") then
+					GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+					GameTooltip:SetText(self.spellName, 1, 1, 1, 1, true)
+					GameTooltip:Show()
+				end
+			</OnEnter>
+			<OnLeave>
+				GameTooltip:Hide()
+			</OnLeave>
+		</Scripts>
+	</Frame>
+
+	<Frame name="XPerlProfileRowTemplate" virtual="true">
+		<Size>
+			<AbsDimension x="1" y="16"/>
+		</Size>
+		<Scripts>
+			<OnLoad>
+				local f = self:GetParent()
+				while (f and not f.FillList) do
+					f = f:GetParent()
+				end
+				self.master = f
+				if (f and not f.rows) then
+					f.rows = {}
+				end
+				if (f) then
+					f.rows[self:GetID()] = self
+				end
+				if (f and not f.marked) then
+					f.marked = {}
+				end
+				self.nameText = _G[self:GetName().."_LabelText"]
+			</OnLoad>
+		</Scripts>
+		<Frames>
+			<CheckButton name="$parent_Mark" inherits="UICheckButtonTemplate">
+				<Size><AbsDimension x="24" y="24"/></Size>
+				<Scale><AbsValue val="0.7"/></Scale>
+				<Anchors>
+					<Anchor point="LEFT">
+						<Offset><AbsDimension x="2" y="0"/></Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						local row = self:GetParent()
+						if (row.profileName) then
+							if (self:GetChecked()) then
+								row.master.marked[row.profileName] = true
+							else
+								row.master.marked[row.profileName] = nil
+							end
+						end
+					</OnClick>
+				</Scripts>
+			</CheckButton>
+			<Button name="$parent_Del" inherits="UIPanelButtonTemplate" text="x">
+				<Size><AbsDimension x="18" y="14"/></Size>
+				<Anchors>
+					<Anchor point="RIGHT">
+						<Offset><AbsDimension x="-2" y="0"/></Offset>
+					</Anchor>
+				</Anchors>
+				<Scripts>
+					<OnClick>
+						local row = self:GetParent()
+						if (row.profileName and XPerl_Profiles_Delete(row.profileName)) then
+							local panel = XPerl_Options_Profiles
+							if (panel.marked) then
+								panel.marked[row.profileName] = nil
+							end
+							panel:FillList()
+						end
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="$parent_Label">
+				<Size><AbsDimension x="1" y="14"/></Size>
+				<Anchors>
+					<Anchor point="LEFT" relativeTo="$parent_Mark" relativePoint="RIGHT">
+						<Offset><AbsDimension x="0" y="0"/></Offset>
+					</Anchor>
+					<Anchor point="RIGHT" relativeTo="$parent_Del" relativePoint="LEFT">
+						<Offset><AbsDimension x="-2" y="0"/></Offset>
+					</Anchor>
+				</Anchors>
+				<NormalFont style="GameFontNormalSmall"/>
+				<ButtonText name="$parentText" justifyH="LEFT">
+					<Anchors>
+						<Anchor point="LEFT">
+							<Offset><AbsDimension x="2" y="0"/></Offset>
+						</Anchor>
+						<Anchor point="RIGHT">
+							<Offset><AbsDimension x="-2" y="0"/></Offset>
+						</Anchor>
+					</Anchors>
+				</ButtonText>
+				<HighlightTexture file="Interface\QuestFrame\UI-QuestTitleHighlight" alphaMode="ADD"/>
+				<Scripts>
+					<OnClick>
+						local row = self:GetParent()
+						if (row.profileName) then
+							XPerl_Options_Profiles_Name:SetText(row.profileName)
+							row.master.selection = row.listIndex
+							row.master:FillList()
+						end
+					</OnClick>
+				</Scripts>
+			</Button>
+		</Frames>
+	</Frame>
+
 	<Frame name="XPerl_OptionsAnchor" parent="UIParent" movable="true" resizable="true">
 		<Size>
 			<AbsDimension x="650" y="540"/>
@@ -1766,6 +1932,8 @@
 					if (XPerl_AdminFrame) then
 						table.insert(tabs, XPerl_Options_Tab12)
 					end
+
+					table.insert(tabs, XPerl_Options_Tab13)
 
 					local lastTab = nil
 					local totalTabWidth = 0
@@ -2891,7 +3059,8 @@
 								"_Colour_Options",
 								"_Helper_Options",
 								"_Monitor_Options",
-								"_Admin_Options"}
+								"_Admin_Options",
+								"_Profiles"}
 
 						self.SelectTab = function(self, id)
 
@@ -3070,6 +3239,17 @@
 							</OnClick>
 						</Scripts>
 					</Button>
+
+					<Button name="$parent13" inherits="XPerlTabTemplate" id="13" hidden="true">
+						<Anchors>
+							<Anchor point="BOTTOMLEFT" relativePoint="BOTTOMRIGHT" relativeTo="$parent12"/>
+						</Anchors>
+						<Scripts>
+							<OnClick>
+								self:GetParent():SelectTab(13)
+							</OnClick>
+						</Scripts>
+					</Button>
 				</Frames>
 			</Frame>
 
@@ -3114,6 +3294,7 @@
 								self:SetNormalTexture(tex)
 							</OnShow>
 							<OnClick>
+								XPerl_Options_TextureSelect.applyFunc = nil
 								XPerl_Options_TextureSelect:Show()
 							</OnClick>
 						</Scripts>
@@ -3381,8 +3562,8 @@
 					<CheckButton name="$parent_BuffCooldownAny" inherits="XPerlCheckButtonTemplate">
 						<Size><AbsDimension x="26" y="26"/></Size>
 						<Anchors>
-							<Anchor point="TOPLEFT" relativeTo="$parent_BuffCooldown" relativePoint="TOPRIGHT">
-								<Offset><AbsDimension x="90" y="0"/></Offset>
+							<Anchor point="LEFT" relativeTo="$parent_BuffCooldown" relativePoint="RIGHT">
+								<Offset><AbsDimension x="10" y="0"/></Offset>
 							</Anchor>
 						</Anchors>
 						<Scripts>
@@ -3392,13 +3573,18 @@
 								self.configIndex = "cooldownAny"
 								self.configClick = XPerl_OptionActions
 							</OnLoad>
+							<OnShow>
+								local t = XPerl_Options_GetSibling("BuffCooldown", self)
+								local t2 = _G[t:GetName().."Text"]
+								self:SetPoint("LEFT", t, "RIGHT", t2:GetStringWidth() + 10, 0)
+							</OnShow>
 						</Scripts>
 					</CheckButton>
 
 					<CheckButton name="$parent_BuffCountdown" inherits="XPerlCheckButtonTemplate">
 						<Size><AbsDimension x="26" y="26"/></Size>
 						<Anchors>
-							<Anchor point="TOP" relativeTo="$parent_BuffCooldown" relativePoint="BOTTOMRIGHT">
+							<Anchor point="TOPLEFT" relativeTo="$parent_BuffCooldown" relativePoint="BOTTOMLEFT">
 								<Offset><AbsDimension x="0" y="6"/></Offset>
 							</Anchor>
 						</Anchors>
@@ -3419,8 +3605,8 @@
 					<CheckButton name="$parent_BuffCountdownAny" inherits="XPerlCheckButtonTemplate">
 						<Size><AbsDimension x="26" y="26"/></Size>
 						<Anchors>
-							<Anchor point="TOPLEFT" relativeTo="$parent_BuffCountdown" relativePoint="TOPRIGHT">
-								<Offset><AbsDimension x="90" y="0"/></Offset>
+							<Anchor point="TOPLEFT" relativeTo="$parent_BuffCooldownAny" relativePoint="BOTTOMLEFT">
+								<Offset><AbsDimension x="0" y="6"/></Offset>
 							</Anchor>
 						</Anchors>
 						<Scripts>
@@ -3527,7 +3713,6 @@
 									XPerl_Options_EnableSibling(self,"HighlightHoTs")
 									XPerl_Options_EnableSibling(self,"HighlightHEAL")
 									XPerl_Options_EnableSibling(self,"HighlightAggro")
-									XPerl_Options_EnableSibling(self,"HighlightShields")
 									XPerl_Options_EnableSibling(self,"HighlightHotcount")
 									XPerl_Options_EnableSibling(self,"HighlightTarget")
 									XPerl_Options_EnableSibling(self,"HighlightMending")
@@ -3538,10 +3723,6 @@
 									if (class ~= "DRUID" and class ~= "PRIEST" and class ~= "SHAMAN") then
 										XPerlDB.highlight.HOT = nil
 										XPerl_Options_EnableCheck(XPerl_Options_GetSibling("HighlightHoTs",self), false)
-									end
-									if (class ~= "PRIEST" and class ~= "SHAMAN" and class ~= "MAGE" and class ~= "PALADIN") then
-										XPerlDB.highlight.SHIELD = nil
-										XPerl_Options_EnableCheck(XPerl_Options_GetSibling("HighlightShields",self), false)
 									end
 									if (class ~= "PRIEST") then
 										XPerlDB.highlight.POM = nil
@@ -3616,22 +3797,6 @@
 						</Scripts>
 					</CheckButton>
 
-					<CheckButton name="$parent_HighlightShields" inherits="XPerlCheckButtonTemplate">
-						<Size><AbsDimension x="26" y="26"/></Size>
-						<Anchors>
-							<Anchor point="TOPLEFT" relativeTo="$parent_HighlightAggro" relativePoint="BOTTOMLEFT">
-								<Offset><AbsDimension x="0" y="6"/></Offset>
-							</Anchor>
-						</Anchors>
-						<Scripts>
-							<OnLoad>
-								XPerl_OptionsSetMyText(self, "XPERL_CONF_RAID_HIGHLIGHTS_SHIELDS")
-								self.configBase = "XPerlDB.highlight"
-								self.configIndex = "SHIELD"
-							</OnLoad>
-						</Scripts>
-					</CheckButton>
-
 					<CheckButton name="$parent_HighlightTarget" inherits="XPerlCheckButtonTemplate">
 						<Size><AbsDimension x="26" y="26"/></Size>
 						<Anchors>
@@ -3651,7 +3816,7 @@
 					<CheckButton name="$parent_HighlightMending" inherits="XPerlCheckButtonTemplate">
 						<Size><AbsDimension x="26" y="26"/></Size>
 						<Anchors>
-							<Anchor point="TOPLEFT" relativeTo="$parent_HighlightShields" relativePoint="BOTTOMLEFT">
+							<Anchor point="TOPLEFT" relativeTo="$parent_HighlightAggro" relativePoint="BOTTOMLEFT">
 								<Offset><AbsDimension x="0" y="6"/></Offset>
 							</Anchor>
 						</Anchors>
@@ -3699,7 +3864,7 @@
 					<Frame name="$parent_RangeFinder">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT">
-								<Offset><AbsDimension x="5" y="105"/></Offset>
+								<Offset><AbsDimension x="5" y="125"/></Offset>
 							</Anchor>
 							<Anchor point="BOTTOMRIGHT">
 								<Offset><AbsDimension x="-5" y="5"/></Offset>
@@ -3710,7 +3875,7 @@
 							<OnLoad>
 								self:SetScale(0.9)
 								self.Refresh = function(self)
-									local a = {"Enable", "FadeAmount", "CustomSpell", "CombineWithHealth", "RangeHealthAmount", "DebuffCheck", "InteractNone", "Interact10", "Interact30", "Interact40"}
+									local a = {"Enable", "FadeAmount", "UpdateInterval", "CustomSpell", "CombineWithHealth", "RangeHealthAmount", "DebuffCheck", "InteractNone", "Interact10", "Interact30", "Interact40"}
 									for k,v in pairs(a) do
 										local f = _G[self:GetName().."_"..v]
 										if (f) then
@@ -3728,12 +3893,12 @@
 									<Anchors>
 										<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Area_Tabs" relativePoint="BOTTOMLEFT">
 											<Offset>
-												<AbsDimension x="3" y="107"/>
+												<AbsDimension x="3" y="127"/>
 											</Offset>
 										</Anchor>
 										<Anchor point="BOTTOMRIGHT" relativeTo="XPerl_Options_Area_Tabs">
 											<Offset>
-												<AbsDimension x="-3" y="104"/>
+												<AbsDimension x="-3" y="124"/>
 											</Offset>
 										</Anchor>
 									</Anchors>
@@ -3754,6 +3919,7 @@
 											XPerl_Options_EnableSibling(self,"NameFrame")
 											XPerl_Options_EnableSibling(self,"StatsFrame")
 											XPerl_Options_EnableSibling(self,"Enable")
+											XPerl_Options_EnableSibling(self,"UpdateInterval")
 											XPerl_Options_EnableSibling(self,"InteractNone")
 											XPerl_Options_EnableSibling(self,"Interact10")
 											XPerl_Options_EnableSibling(self,"Interact30")
@@ -3790,11 +3956,46 @@
 								</Scripts>
 							</CheckButton>
 
-							<CheckButton name="$parent_Main" inherits="XPerlRadioButtonTemplate">
+							<Slider name="$parent_UpdateInterval" inherits="XPerlSlider">
+								<Size><AbsDimension x="110" y="16"/></Size>
 								<Anchors>
 									<Anchor point="TOPLEFT" relativeTo="$parent_OnlyInRaid" relativePoint="BOTTOMLEFT">
+										<Offset><AbsDimension x="0" y="-8"/></Offset>
+									</Anchor>
+								</Anchors>
+								<Scripts>
+									<OnLoad>
+										XPerl_SliderSetup(self)
+										XPerl_OptionsSetMyText(self, "XPERL_CONF_RANGEUPDATEINTERVAL")
+										_G[self:GetName().."Low"]:SetText("0.2")
+										_G[self:GetName().."High"]:SetText("1.0")
+										self:SetMinMaxValues(0.2, 1.0)
+										self:SetValueStep(0.1)
+									</OnLoad>
+									<OnShow>
+										if (not XPerlDB.rangeFinder.updateInterval) then
+											XPerlDB.rangeFinder.updateInterval = 0.5
+										end
+										self:SetValue(XPerlDB.rangeFinder.updateInterval)
+										if (XPerlDB.rangeFinder.enabled) then
+											self:EnableSlider()
+										else
+											self:DisableSlider()
+										end
+									</OnShow>
+									<OnValueChanged>
+										local v = floor((value + 0.05) * 10) / 10
+										XPerlDB.rangeFinder.updateInterval = v
+										_G[self:GetName().."Current"]:SetText(string.format("%.1f", v))
+									</OnValueChanged>
+								</Scripts>
+							</Slider>
+
+							<CheckButton name="$parent_Main" inherits="XPerlRadioButtonTemplate">
+								<Anchors>
+									<Anchor point="TOPLEFT" relativeTo="$parent_UpdateInterval" relativePoint="BOTTOMLEFT">
 										<Offset>
-											<AbsDimension x="2" y="5"/>
+											<AbsDimension x="2" y="-6"/>
 										</Offset>
 									</Anchor>
 								</Anchors>
@@ -3833,8 +4034,8 @@
 
 							<CheckButton name="$parent_StatsFrame" inherits="XPerlRadioButtonTemplate">
 								<Anchors>
-									<Anchor point="TOPLEFT" relativeTo="$parent_NameFrame" relativePoint="BOTTOMLEFT">
-										<Offset><AbsDimension x="0" y="3"/></Offset>
+									<Anchor point="LEFT" relativeTo="$parent_NameFrame" relativePoint="RIGHT">
+										<Offset><AbsDimension x="70" y="0"/></Offset>
 									</Anchor>
 								</Anchors>
 								<Scripts>
@@ -3842,6 +4043,11 @@
 										self:SetChecked(false)
 										XPerl_OptionsSetMyText(self, "XPERL_CONF_RANGE_STATSFRAME")
 									</OnLoad>
+									<OnShow>
+										local t = XPerl_Options_GetSibling("NameFrame", self)
+										local t2 = _G[t:GetName().."Text"]
+										self:SetPoint("LEFT", t, "RIGHT", t2:GetStringWidth() + 15, 0)
+									</OnShow>
 									<OnClick>
 										XPerl_Options.optRange = "StatsFrame"
 										XPerl_Options_CheckRadio(self,{"Main", "NameFrame", "StatsFrame"})
@@ -4439,11 +4645,10 @@
 						</Scripts>
 					</CheckButton>
 					
-                                        -- added by playerlin 20100820
-                                        <CheckButton name="$parent_XPerlOldRoleIcons" inherits="XPerlCheckButtonTemplate">
+					<CheckButton name="$parent_XPerlOldRoleIcons" inherits="XPerlCheckButtonTemplate">
 						<Anchors>
 							<Anchor point="TOPLEFT" relativeTo="$parent_ShowReadyCheck" relativePoint="BOTTOMLEFT">
-								<Offset><AbsDimension x="-84" y="-6"/></Offset>
+								<Offset><AbsDimension x="0" y="6"/></Offset>
 							</Anchor>
 						</Anchors>
 						<Scripts>
@@ -11704,6 +11909,1419 @@
 				</Frames>
 			</Frame>
 
+			-- Profiles (Custom Sirus)
+			<Frame name="$parent_Profiles" hidden="true">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Area_Tabs"/>
+					<Anchor point="BOTTOMRIGHT" relativeTo="XPerl_Options_Area_Tabs"/>
+				</Anchors>
+				<Scripts>
+					<OnLoad>
+						self.FillList = function(s, n) XPerl_Profiles_Fill(s, n) end
+						self.marked = {}
+						self.rows = {}
+					</OnLoad>
+					<OnShow>
+						self.scrollBar = XPerl_Options_Profiles_ListScrollBar
+						if (self.scrollBar) then
+							self.scrollBar.bar = XPerl_Options_Profiles_ListScrollBarScrollBar
+						end
+						XPerl_Profiles_InitPanel(self)
+						self:FillList()
+						local autoApply = XPerl_Options_Profiles_AutoApply
+						if (autoApply and XPerl_Profiles_GetAutoApply) then
+							autoApply:SetChecked(XPerl_Profiles_GetAutoApply() and true)
+						end
+					</OnShow>
+				</Scripts>
+				<Frames>
+					<!-- Content: при добавлении блоков — обернуть в ScrollFrame (как Layout) -->
+					<Frame name="XPerl_Options_Profiles_Content">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles">
+								<Offset><AbsDimension x="6" y="-5"/></Offset>
+							</Anchor>
+							<Anchor point="BOTTOMRIGHT" relativeTo="XPerl_Options_Profiles">
+								<Offset><AbsDimension x="-8" y="8"/></Offset>
+							</Anchor>
+						</Anchors>
+						<Frames>
+					<Frame name="XPerl_Options_Profiles_RowTop">
+						<Anchors>
+							<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Content"/>
+							<Anchor point="TOPRIGHT" relativeTo="XPerl_Options_Profiles_Content"/>
+							<Anchor point="BOTTOM" relativeTo="XPerl_Options_Profiles_Content" relativePoint="CENTER">
+								<Offset><AbsDimension x="0" y="-28"/></Offset>
+							</Anchor>
+						</Anchors>
+						<Frames>
+							<Frame name="XPerl_Options_Profiles_QuadTL">
+								<Anchors>
+									<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_RowTop"/>
+									<Anchor point="BOTTOM" relativeTo="XPerl_Options_Profiles_RowTop"/>
+									<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_RowTop" relativePoint="CENTER"/>
+								</Anchors>
+								<Backdrop edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+									<EdgeSize><AbsValue val="9"/></EdgeSize>
+								</Backdrop>
+								<Frames>
+									<Button name="XPerl_Options_Profiles_Title">
+										<Size><AbsDimension x="120" y="16"/></Size>
+										<Anchors>
+											<Anchor point="TOPLEFT">
+												<Offset><AbsDimension x="8" y="-6"/></Offset>
+											</Anchor>
+										</Anchors>
+										<Layers>
+											<Layer level="ARTWORK">
+												<FontString inherits="GameFontNormal" text="XPERL_CONF_PROFILES">
+													<Anchors><Anchor point="LEFT"/></Anchors>
+												</FontString>
+											</Layer>
+										</Layers>
+										<Scripts>
+											<OnLoad>
+												self.tooltipText = XPERL_CONF_PROFILES_DESC2
+											</OnLoad>
+										</Scripts>
+									</Button>
+									<EditBox name="XPerl_Options_Profiles_Name" letters="64" inherits="XPerlOptEditBox">
+										<Size><AbsDimension x="110" y="22"/></Size>
+										<Anchors>
+											<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Title" relativePoint="BOTTOMLEFT">
+												<Offset><AbsDimension x="4" y="-6"/></Offset>
+											</Anchor>
+										</Anchors>
+									</EditBox>
+									<Button name="XPerl_Options_Profiles_Save" inherits="XPerlButtonTemplate">
+										<Anchors>
+											<Anchor point="TOPRIGHT">
+												<Offset><AbsDimension x="-8" y="-28"/></Offset>
+											</Anchor>
+										</Anchors>
+										<Scripts>
+											<OnLoad>
+												XPerl_OptionsSetMyText(self, "XPERL_CONF_PROFILES_SAVE")
+											</OnLoad>
+											<OnClick>
+												XPerl_Profiles_Save(XPerl_Options_Profiles_Name:GetText())
+												XPerl_Options_Profiles:FillList(XPerl_Options_Profiles_Name:GetText())
+											</OnClick>
+										</Scripts>
+									</Button>
+									<Button name="XPerl_Options_Profiles_Apply" inherits="XPerlButtonTemplate">
+										<Anchors>
+											<Anchor point="TOP" relativeTo="XPerl_Options_Profiles_Save" relativePoint="BOTTOM">
+												<Offset><AbsDimension x="0" y="-2"/></Offset>
+											</Anchor>
+										</Anchors>
+										<Scripts>
+											<OnLoad>
+												XPerl_Options_RegisterProtected(self)
+												XPerl_OptionsSetMyText(self, "XPERL_CONF_PROFILES_APPLY")
+											</OnLoad>
+											<OnClick>
+												XPerl_Profiles_Apply(XPerl_Options_Profiles_Name:GetText())
+												XPerl_Options_Profiles:FillList()
+											</OnClick>
+										</Scripts>
+									</Button>
+									<CheckButton name="XPerl_Options_Profiles_AutoApply" inherits="XPerlCheckButtonTemplate">
+										<Anchors>
+											<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Name" relativePoint="BOTTOMLEFT">
+												<Offset><AbsDimension x="-4" y="0"/></Offset>
+											</Anchor>
+										</Anchors>
+										<Scripts>
+											<OnLoad>
+												XPerl_OptionsSetMyText(self, "XPERL_CONF_PROFILES_AUTOAPPLY")
+											</OnLoad>
+											<OnClick>
+												XPerl_Profiles_UpdateAutoApply(self:GetChecked())
+											</OnClick>
+										</Scripts>
+									</CheckButton>
+									<Frame name="XPerl_Options_Profiles_List">
+										<Anchors>
+											<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_AutoApply" relativePoint="BOTTOMLEFT">
+												<Offset><AbsDimension x="4" y="-4"/></Offset>
+											</Anchor>
+											<Anchor point="BOTTOMRIGHT">
+												<Offset><AbsDimension x="-6" y="6"/></Offset>
+											</Anchor>
+										</Anchors>
+										<Backdrop edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+											<EdgeSize><AbsValue val="9"/></EdgeSize>
+										</Backdrop>
+										<Scripts>
+											<OnLoad>
+												self.scroll = _G["XPerl_Options_Profiles_ListScrollBar"]
+											</OnLoad>
+											<OnMouseWheel>
+												if (self.scroll and self.scroll.bar) then
+													if (delta > 0) then
+														self.scroll.bar:SetValue(self.scroll.bar:GetValue() - self.scroll.bar:GetValueStep())
+													else
+														self.scroll.bar:SetValue(self.scroll.bar:GetValue() + self.scroll.bar:GetValueStep())
+													end
+													XPerl_Options_Profiles:FillList()
+												end
+											</OnMouseWheel>
+										</Scripts>
+										<Frames>
+											<Button name="XPerl_Options_Profiles_Delete" inherits="XPerl_BasicButton" text="DELETE">
+												<Size><AbsDimension x="48" y="48"/></Size>
+												<Anchors>
+													<Anchor point="TOPRIGHT">
+														<Offset><AbsDimension x="-4" y="-4"/></Offset>
+													</Anchor>
+												</Anchors>
+												<NormalTexture file="Interface\Addons\XPerl_RaidAdmin\Images\XPerl_Bin">
+													<TexCoords left="0" right="0.5" top="0" bottom="0.5"/>
+												</NormalTexture>
+												<PushedTexture file="Interface\Addons\XPerl_RaidAdmin\Images\XPerl_Bin">
+													<TexCoords left="0.5" right="1" top="0" bottom="0.5"/>
+												</PushedTexture>
+												<DisabledTexture file="Interface\Addons\XPerl_RaidAdmin\Images\XPerl_Bin">
+													<TexCoords left="0" right="0.5" top="0.5" bottom="1"/>
+												</DisabledTexture>
+												<HighlightTexture file="Interface\Addons\XPerl_RaidAdmin\Images\XPerl_Bin" alphaMode="ADD">
+													<TexCoords left="0.5" right="1" top="0.5" bottom="1"/>
+												</HighlightTexture>
+												<Scripts>
+													<OnLoad>
+														self:SetFrameLevel(self:GetParent():GetFrameLevel() + 4)
+														self.tooltipText = XPERL_CONF_PROFILES_DELETE_DESC
+														self:SetScale(0.36)
+													</OnLoad>
+													<OnClick>
+														local panel = XPerl_Options_Profiles
+														if (XPerl_Profiles_DeleteChecked(panel) > 0) then
+														elseif (XPerl_Profiles_Delete(XPerl_Options_Profiles_Name:GetText())) then
+															XPerl_Options_Profiles_Name:SetText("")
+															panel:FillList()
+														end
+													</OnClick>
+												</Scripts>
+											</Button>
+											<Frame name="XPerl_Options_Profiles_ListInner">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_List">
+														<Offset><AbsDimension x="4" y="-4"/></Offset>
+													</Anchor>
+													<Anchor point="BOTTOMRIGHT" relativeTo="XPerl_Options_Profiles_List">
+														<Offset><AbsDimension x="-18" y="4"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Frames>
+											<Frame name="XPerl_Options_Profiles_List1" inherits="XPerlProfileRowTemplate" id="1" hidden="true">
+												<Anchors>
+													<Anchor point="TOPLEFT"/>
+													<Anchor point="TOPRIGHT"/>
+												</Anchors>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_List2" inherits="XPerlProfileRowTemplate" id="2" hidden="true">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_List1" relativePoint="BOTTOMLEFT"/>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_ListInner"/>
+												</Anchors>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_List3" inherits="XPerlProfileRowTemplate" id="3" hidden="true">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_List2" relativePoint="BOTTOMLEFT"/>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_ListInner"/>
+												</Anchors>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_List4" inherits="XPerlProfileRowTemplate" id="4" hidden="true">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_List3" relativePoint="BOTTOMLEFT"/>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_ListInner"/>
+												</Anchors>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_List5" inherits="XPerlProfileRowTemplate" id="5" hidden="true">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_List4" relativePoint="BOTTOMLEFT"/>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_ListInner"/>
+												</Anchors>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_List6" inherits="XPerlProfileRowTemplate" id="6" hidden="true">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_List5" relativePoint="BOTTOMLEFT"/>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_ListInner"/>
+												</Anchors>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_List7" inherits="XPerlProfileRowTemplate" id="7" hidden="true">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_List6" relativePoint="BOTTOMLEFT"/>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_ListInner"/>
+												</Anchors>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_List8" inherits="XPerlProfileRowTemplate" id="8" hidden="true">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_List7" relativePoint="BOTTOMLEFT"/>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_ListInner"/>
+												</Anchors>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_List9" inherits="XPerlProfileRowTemplate" id="9" hidden="true">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_List8" relativePoint="BOTTOMLEFT"/>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_ListInner"/>
+												</Anchors>
+											</Frame>
+												</Frames>
+											</Frame>
+											<ScrollFrame name="XPerl_Options_Profiles_ListScrollBar" inherits="FauxScrollFrameTemplate">
+												<Anchors>
+													<Anchor point="TOPRIGHT" relativeTo="XPerl_Options_Profiles_List">
+														<Offset><AbsDimension x="-2" y="-4"/></Offset>
+													</Anchor>
+													<Anchor point="BOTTOMRIGHT" relativeTo="XPerl_Options_Profiles_List">
+														<Offset><AbsDimension x="-2" y="4"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														self.bar = _G[self:GetName().."ScrollBar"]
+													</OnLoad>
+													<OnVerticalScroll>
+														FauxScrollFrame_OnVerticalScroll(self, offset, 16, function() XPerl_Options_Profiles:FillList() end)
+													</OnVerticalScroll>
+													<OnMouseWheel>
+														if (self.bar) then
+															if (delta > 0) then
+																self.bar:SetValue(self.bar:GetValue() - self.bar:GetValueStep())
+															else
+																self.bar:SetValue(self.bar:GetValue() + self.bar:GetValueStep())
+															end
+														end
+													</OnMouseWheel>
+												</Scripts>
+											</ScrollFrame>
+										</Frames>
+									</Frame>
+								</Frames>
+								<Layers>
+									<Layer level="ARTWORK">
+										<FontString name="XPerl_Options_Profiles_ActiveText" inherits="GameFontNormalSmall" justifyH="RIGHT">
+											<Anchors>
+												<Anchor point="TOPRIGHT">
+													<Offset><AbsDimension x="-8" y="-6"/></Offset>
+												</Anchor>
+												<Anchor point="LEFT" relativeTo="XPerl_Options_Profiles_Title" relativePoint="RIGHT">
+													<Offset><AbsDimension x="4" y="0"/></Offset>
+												</Anchor>
+											</Anchors>
+										</FontString>
+									</Layer>
+								</Layers>
+							</Frame>
+
+							<Frame name="XPerl_Options_Profiles_QuadTR">
+								<Anchors>
+									<Anchor point="TOPRIGHT" relativeTo="XPerl_Options_Profiles_RowTop"/>
+									<Anchor point="BOTTOM" relativeTo="XPerl_Options_Profiles_RowTop"/>
+									<Anchor point="LEFT" relativeTo="XPerl_Options_Profiles_RowTop" relativePoint="CENTER"/>
+								</Anchors>
+								<Backdrop edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+									<EdgeSize><AbsValue val="9"/></EdgeSize>
+								</Backdrop>
+								<Frames>
+									<Frame name="XPerl_Options_Profiles_HiddenDebuffs">
+										<Anchors>
+											<Anchor point="TOPLEFT">
+												<Offset><AbsDimension x="6" y="-6"/></Offset>
+											</Anchor>
+											<Anchor point="BOTTOMRIGHT">
+												<Offset><AbsDimension x="-6" y="6"/></Offset>
+											</Anchor>
+										</Anchors>
+										<Scripts>
+											<OnShow>
+												XPerl_Options_HiddenDebuffs_OnShow()
+											</OnShow>
+										</Scripts>
+										<Layers>
+											<Layer level="ARTWORK">
+												<FontString name="XPerl_Options_Profiles_HiddenDebuffs_Title" inherits="GameFontNormal" justifyH="LEFT" text="XPERL_CONF_HIDENDEBUFFS">
+													<Anchors>
+														<Anchor point="TOPLEFT">
+															<Offset><AbsDimension x="2" y="-2"/></Offset>
+														</Anchor>
+													</Anchors>
+												</FontString>
+											</Layer>
+										</Layers>
+										<Frames>
+											<CheckButton name="XPerl_Options_Profiles_HiddenDebuffs_Enable" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Title" relativePoint="TOPLEFT">
+														<Offset><AbsDimension x="138" y="9"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_ENABLE")
+														self.configBase = "XPerlDB.hiddenDebuffs"
+														self.configIndex = "enable"
+														self.configClick = XPerl_HiddenDebuffs_OnOptionClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<Frame name="XPerl_Options_Profiles_HiddenDebuffs_HeaderLine">
+												<Size><AbsDimension x="1" y="1"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Enable" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="-138" y="-2"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="ARTWORK">
+														<Texture setAllPoints="true">
+															<Color r="0.45" g="0.45" b="0.45" a="0.9"/>
+														</Texture>
+													</Layer>
+												</Layers>
+											</Frame>
+											<CheckButton name="XPerl_Options_Profiles_HiddenDebuffs_Target" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_HeaderLine" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-2"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_TARGET")
+														self.configBase = "XPerlDB.hiddenDebuffs"
+														self.configIndex = "target"
+														self.configClick = XPerl_HiddenDebuffs_OnOptionClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<CheckButton name="XPerl_Options_Profiles_HiddenDebuffs_TargetTarget" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Target" relativePoint="TOPLEFT">
+														<Offset><AbsDimension x="138" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_TOT")
+														self.configBase = "XPerlDB.hiddenDebuffs"
+														self.configIndex = "targettarget"
+														self.configClick = XPerl_HiddenDebuffs_OnOptionClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<CheckButton name="XPerl_Options_Profiles_HiddenDebuffs_Focus" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Target" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="2"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_FOCUS")
+														self.configBase = "XPerlDB.hiddenDebuffs"
+														self.configIndex = "focus"
+														self.configClick = XPerl_HiddenDebuffs_OnOptionClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<CheckButton name="XPerl_Options_Profiles_HiddenDebuffs_FocusTarget" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Focus" relativePoint="TOPLEFT">
+														<Offset><AbsDimension x="138" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_FOT")
+														self.configBase = "XPerlDB.hiddenDebuffs"
+														self.configIndex = "focustarget"
+														self.configClick = XPerl_HiddenDebuffs_OnOptionClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<CheckButton name="XPerl_Options_Profiles_HiddenDebuffs_Player" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Focus" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="2"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_PLAYER")
+														self.configBase = "XPerlDB.hiddenDebuffs"
+														self.configIndex = "player"
+														self.configClick = XPerl_HiddenDebuffs_OnOptionClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<CheckButton name="XPerl_Options_Profiles_HiddenDebuffs_Party" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Player" relativePoint="TOPLEFT">
+														<Offset><AbsDimension x="138" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_PARTY")
+														self.configBase = "XPerlDB.hiddenDebuffs"
+														self.configIndex = "party"
+														self.configClick = XPerl_HiddenDebuffs_OnOptionClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<Frame name="XPerl_Options_Profiles_HiddenDebuffs_ColHeaders">
+												<Size><AbsDimension x="1" y="12"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Player" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-1"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="ARTWORK">
+														<FontString name="XPerl_Options_Profiles_HiddenDebuffs_BuffsHeader" inherits="GameFontNormalSmall" justifyH="LEFT" text="XPERL_CONF_HIDENDEBUFFS_BUFFS">
+															<Anchors>
+																<Anchor point="TOPLEFT">
+																	<Offset><AbsDimension x="6" y="0"/></Offset>
+																</Anchor>
+																<Anchor point="TOPRIGHT" relativePoint="TOP">
+																	<Offset><AbsDimension x="-4" y="0"/></Offset>
+																</Anchor>
+															</Anchors>
+														</FontString>
+														<FontString name="XPerl_Options_Profiles_HiddenDebuffs_DebuffsHeader" inherits="GameFontNormalSmall" justifyH="LEFT" text="XPERL_CONF_HIDENDEBUFFS_DEBUFFS">
+															<Anchors>
+																<Anchor point="TOPLEFT" relativePoint="TOP">
+																	<Offset><AbsDimension x="6" y="0"/></Offset>
+																</Anchor>
+																<Anchor point="TOPRIGHT">
+																	<Offset><AbsDimension x="-6" y="0"/></Offset>
+																</Anchor>
+															</Anchors>
+														</FontString>
+													</Layer>
+												</Layers>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_HiddenDebuffs_List">
+												<Size>
+													<AbsDimension x="1" y="78"/>
+												</Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_ColHeaders" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-1"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+													<BackgroundInsets>
+														<AbsInset left="3" right="3" top="3" bottom="3"/>
+													</BackgroundInsets>
+													<TileSize>
+														<AbsValue val="16"/>
+													</TileSize>
+													<EdgeSize>
+														<AbsValue val="8"/>
+													</EdgeSize>
+												</Backdrop>
+												<Layers>
+													<Layer level="ARTWORK">
+														<Texture name="XPerl_Options_Profiles_HiddenDebuffs_Divider">
+															<Size>
+																<AbsDimension x="1" y="1"/>
+															</Size>
+															<Anchors>
+																<Anchor point="TOP">
+																	<Offset><AbsDimension x="0" y="-4"/></Offset>
+																</Anchor>
+																<Anchor point="BOTTOM">
+																	<Offset><AbsDimension x="0" y="2"/></Offset>
+																</Anchor>
+																<Anchor point="CENTER">
+																	<Offset><AbsDimension x="0" y="0"/></Offset>
+																</Anchor>
+															</Anchors>
+															<Color r="0.55" g="0.45" b="0.2" a="0.85"/>
+														</Texture>
+													</Layer>
+												</Layers>
+												<Scripts>
+													<OnLoad>
+														self:SetBackdropColor(0.05, 0.05, 0.05, 0.8)
+														self:SetBackdropBorderColor(0.35, 0.35, 0.35, 1)
+													</OnLoad>
+												</Scripts>
+												<Frames>
+													<Frame name="XPerl_Options_Profiles_HiddenDebuffs_BuffsCol" enableMouse="true">
+														<Anchors>
+															<Anchor point="TOPLEFT">
+																<Offset><AbsDimension x="4" y="-4"/></Offset>
+															</Anchor>
+															<Anchor point="BOTTOMLEFT">
+																<Offset><AbsDimension x="4" y="2"/></Offset>
+															</Anchor>
+															<Anchor point="RIGHT" relativePoint="CENTER">
+																<Offset><AbsDimension x="-4" y="0"/></Offset>
+															</Anchor>
+														</Anchors>
+														<Frames>
+															<Frame name="XPerl_Options_Profiles_HiddenDebuffs_BuffsInner">
+																<Anchors>
+																	<Anchor point="TOPLEFT"/>
+																	<Anchor point="BOTTOMRIGHT"/>
+																</Anchors>
+																<Frames>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Buffs1" inherits="XPerlHiddenDebuffRowTemplate" id="1" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT"/>
+																			<Anchor point="TOPRIGHT"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = false
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Buffs2" inherits="XPerlHiddenDebuffRowTemplate" id="2" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Buffs1" relativePoint="BOTTOMLEFT"/>
+																			<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_BuffsInner"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = false
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Buffs3" inherits="XPerlHiddenDebuffRowTemplate" id="3" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Buffs2" relativePoint="BOTTOMLEFT"/>
+																			<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_BuffsInner"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = false
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Buffs4" inherits="XPerlHiddenDebuffRowTemplate" id="4" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Buffs3" relativePoint="BOTTOMLEFT"/>
+																			<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_BuffsInner"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = false
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Buffs5" inherits="XPerlHiddenDebuffRowTemplate" id="5" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Buffs4" relativePoint="BOTTOMLEFT"/>
+																			<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_BuffsInner"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = false
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																</Frames>
+															</Frame>
+															<ScrollFrame name="XPerl_Options_Profiles_HiddenDebuffs_BuffsScrollBar" inherits="FauxScrollFrameTemplate" enableMouse="false" hidden="true">
+																<Size>
+																	<AbsDimension x="1" y="1"/>
+																</Size>
+																<Anchors>
+																	<Anchor point="TOPRIGHT"/>
+																</Anchors>
+																<Scripts>
+																	<OnLoad>
+																		self.bar = _G[self:GetName().."ScrollBar"]
+																		if (self.bar) then
+																			self.bar:Hide()
+																		end
+																	</OnLoad>
+																	<OnVerticalScroll>
+																		FauxScrollFrame_OnVerticalScroll(self, offset, 14, XPerl_Options_HiddenDebuffs_FillList)
+																	</OnVerticalScroll>
+																</Scripts>
+															</ScrollFrame>
+														</Frames>
+														<Scripts>
+															<OnMouseWheel>
+																local scroll = _G["XPerl_Options_Profiles_HiddenDebuffs_BuffsScrollBar"]
+																if (scroll and scroll.bar) then
+																	if (delta > 0) then
+																		scroll.bar:SetValue(scroll.bar:GetValue() - scroll.bar:GetValueStep())
+																	else
+																		scroll.bar:SetValue(scroll.bar:GetValue() + scroll.bar:GetValueStep())
+																	end
+																end
+															</OnMouseWheel>
+														</Scripts>
+													</Frame>
+													<Frame name="XPerl_Options_Profiles_HiddenDebuffs_DebuffsCol" enableMouse="true">
+														<Anchors>
+															<Anchor point="TOPRIGHT">
+																<Offset><AbsDimension x="-4" y="-4"/></Offset>
+															</Anchor>
+															<Anchor point="BOTTOMRIGHT">
+																<Offset><AbsDimension x="-4" y="2"/></Offset>
+															</Anchor>
+															<Anchor point="LEFT" relativePoint="CENTER">
+																<Offset><AbsDimension x="4" y="0"/></Offset>
+															</Anchor>
+														</Anchors>
+														<Frames>
+															<Frame name="XPerl_Options_Profiles_HiddenDebuffs_DebuffsInner">
+																<Anchors>
+																	<Anchor point="TOPLEFT"/>
+																	<Anchor point="BOTTOMRIGHT"/>
+																</Anchors>
+																<Frames>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Debuffs1" inherits="XPerlHiddenDebuffRowTemplate" id="1" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT"/>
+																			<Anchor point="TOPRIGHT"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = true
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Debuffs2" inherits="XPerlHiddenDebuffRowTemplate" id="2" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Debuffs1" relativePoint="BOTTOMLEFT"/>
+																			<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_DebuffsInner"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = true
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Debuffs3" inherits="XPerlHiddenDebuffRowTemplate" id="3" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Debuffs2" relativePoint="BOTTOMLEFT"/>
+																			<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_DebuffsInner"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = true
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Debuffs4" inherits="XPerlHiddenDebuffRowTemplate" id="4" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Debuffs3" relativePoint="BOTTOMLEFT"/>
+																			<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_DebuffsInner"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = true
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																	<Frame name="XPerl_Options_Profiles_HiddenDebuffs_Debuffs5" inherits="XPerlHiddenDebuffRowTemplate" id="5" hidden="true">
+																		<Anchors>
+																			<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_Debuffs4" relativePoint="BOTTOMLEFT"/>
+																			<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_DebuffsInner"/>
+																		</Anchors>
+																		<Scripts>
+																			<OnLoad>
+																				self.nameText = _G[self:GetName().."Name"]
+																				self.isDebuff = true
+																			</OnLoad>
+																		</Scripts>
+																	</Frame>
+																</Frames>
+															</Frame>
+															<ScrollFrame name="XPerl_Options_Profiles_HiddenDebuffs_DebuffsScrollBar" inherits="FauxScrollFrameTemplate" enableMouse="false" hidden="true">
+																<Size>
+																	<AbsDimension x="1" y="1"/>
+																</Size>
+																<Anchors>
+																	<Anchor point="TOPRIGHT"/>
+																</Anchors>
+																<Scripts>
+																	<OnLoad>
+																		self.bar = _G[self:GetName().."ScrollBar"]
+																		if (self.bar) then
+																			self.bar:Hide()
+																		end
+																	</OnLoad>
+																	<OnVerticalScroll>
+																		FauxScrollFrame_OnVerticalScroll(self, offset, 14, XPerl_Options_HiddenDebuffs_FillList)
+																	</OnVerticalScroll>
+																</Scripts>
+															</ScrollFrame>
+														</Frames>
+														<Scripts>
+															<OnMouseWheel>
+																local scroll = _G["XPerl_Options_Profiles_HiddenDebuffs_DebuffsScrollBar"]
+																if (scroll and scroll.bar) then
+																	if (delta > 0) then
+																		scroll.bar:SetValue(scroll.bar:GetValue() - scroll.bar:GetValueStep())
+																	else
+																		scroll.bar:SetValue(scroll.bar:GetValue() + scroll.bar:GetValueStep())
+																	end
+																end
+															</OnMouseWheel>
+														</Scripts>
+													</Frame>
+												</Frames>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_HiddenDebuffs_HintArea">
+												<Size><AbsDimension x="1" y="12"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_List" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-2"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="ARTWORK">
+														<FontString inherits="GameFontDisableSmall" justifyH="LEFT" text="XPERL_CONF_HIDENDEBUFFS_HINT">
+															<Anchors>
+																<Anchor point="TOPLEFT"/>
+																<Anchor point="TOPRIGHT"/>
+															</Anchors>
+														</FontString>
+													</Layer>
+												</Layers>
+											</Frame>
+											<Button name="XPerl_Options_Profiles_HiddenDebuffs_AddBtn" inherits="XPerlButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPRIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_HintArea" relativePoint="BOTTOMRIGHT">
+														<Offset><AbsDimension x="-4" y="-2"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_ADD")
+													</OnLoad>
+													<OnClick>
+														XPerl_Options_HiddenDebuffs_AddManual(XPerl_Options_Profiles_HiddenDebuffs_AddEdit)
+													</OnClick>
+												</Scripts>
+											</Button>
+											<EditBox name="XPerl_Options_Profiles_HiddenDebuffs_AddEdit" autoFocus="false" letters="64" inherits="XPerlOptEditBox">
+												<Size><AbsDimension x="1" y="20"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_HintArea" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="6" y="-2"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_AddBtn" relativePoint="LEFT">
+														<Offset><AbsDimension x="-4" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+											</EditBox>
+											<CheckButton name="XPerl_Options_Profiles_HiddenDebuffs_AddBuff" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_AddEdit" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="6"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_ADD_BUFF", true)
+														self.configIndex = "addBuff"
+														self.configClick = XPerl_Options_HiddenDebuffs_KindClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<CheckButton name="XPerl_Options_Profiles_HiddenDebuffs_AddDebuff" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HiddenDebuffs_AddBuff" relativePoint="TOPLEFT">
+														<Offset><AbsDimension x="90" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HIDENDEBUFFS_ADD_DEBUFF", true)
+														self.configIndex = "addDebuff"
+														self.configClick = XPerl_Options_HiddenDebuffs_KindClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+										</Frames>
+									</Frame>
+								</Frames>
+							</Frame>
+						</Frames>
+					</Frame>
+
+					<Frame name="XPerl_Options_Profiles_RowBottom">
+						<Anchors>
+							<Anchor point="TOP" relativeTo="XPerl_Options_Profiles_Content" relativePoint="CENTER">
+								<Offset><AbsDimension x="0" y="-28"/></Offset>
+							</Anchor>
+							<Anchor point="BOTTOMLEFT" relativeTo="XPerl_Options_Profiles_Content"/>
+							<Anchor point="BOTTOMRIGHT" relativeTo="XPerl_Options_Profiles_Content"/>
+						</Anchors>
+						<Frames>
+							<Frame name="XPerl_Options_Profiles_QuadBL">
+								<Anchors>
+									<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_RowBottom"/>
+									<Anchor point="BOTTOM" relativeTo="XPerl_Options_Profiles_RowBottom"/>
+									<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_RowBottom" relativePoint="CENTER"/>
+								</Anchors>
+								<Backdrop edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+									<EdgeSize><AbsValue val="9"/></EdgeSize>
+								</Backdrop>
+								<Frames>
+									<Frame name="XPerl_Options_Profiles_Absorb">
+										<Anchors>
+											<Anchor point="TOPLEFT">
+												<Offset><AbsDimension x="6" y="-6"/></Offset>
+											</Anchor>
+											<Anchor point="BOTTOMRIGHT">
+												<Offset><AbsDimension x="-6" y="4"/></Offset>
+											</Anchor>
+										</Anchors>
+										<Layers>
+											<Layer level="ARTWORK">
+												<FontString name="XPerl_Options_Profiles_Absorb_Title" inherits="GameFontNormal" justifyH="LEFT" text="XPERL_CONF_ABSORB">
+													<Anchors>
+														<Anchor point="TOPLEFT">
+															<Offset><AbsDimension x="2" y="-2"/></Offset>
+														</Anchor>
+													</Anchors>
+												</FontString>
+											</Layer>
+										</Layers>
+										<Frames>
+											<CheckButton name="XPerl_Options_Profiles_Absorb_Enable" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_Title" relativePoint="TOPLEFT">
+														<Offset><AbsDimension x="138" y="9"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_ENABLE", true)
+														self.configBase = "XPerlDB.absorb"
+														self.configIndex = "enable"
+														self.configClick = XPerl_Options_Absorb_OnChanged
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<Frame name="XPerl_Options_Profiles_Absorb_HeaderLine1">
+												<Size><AbsDimension x="1" y="1"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_Enable" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="-138" y="-2"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_Absorb">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="ARTWORK">
+														<Texture setAllPoints="true">
+															<Color r="0.45" g="0.45" b="0.45" a="0.9"/>
+														</Texture>
+													</Layer>
+												</Layers>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_Absorb_ShowOnRow">
+												<Size><AbsDimension x="1" y="10"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_HeaderLine1" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-3"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_Absorb">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="ARTWORK">
+														<FontString inherits="GameFontNormalSmall" justifyH="LEFT" text="XPERL_CONF_ABSORB_SHOW_ON">
+															<FontHeight>
+																<AbsValue val="12"/>
+															</FontHeight>
+															<Anchors>
+																<Anchor point="LEFT">
+																	<Offset><AbsDimension x="2" y="0"/></Offset>
+																</Anchor>
+															</Anchors>
+														</FontString>
+													</Layer>
+												</Layers>
+											</Frame>
+											<CheckButton name="XPerl_Options_Profiles_Absorb_Party" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_ShowOnRow" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-1"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_PARTY", true)
+														self.configBase = "XPerlDB.absorb"
+														self.configIndex = "party"
+														self.configClick = XPerl_Options_Absorb_OnChanged
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<CheckButton name="XPerl_Options_Profiles_Absorb_Raid" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOP" relativeTo="XPerl_Options_Profiles_Absorb_Party" relativePoint="TOP"/>
+													<Anchor point="LEFT" relativeTo="XPerl_Options_Profiles_Absorb_Enable" relativePoint="LEFT"/>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_RAID", true)
+														self.configBase = "XPerlDB.absorb"
+														self.configIndex = "raid"
+														self.configClick = XPerl_Options_Absorb_OnChanged
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<Frame name="XPerl_Options_Profiles_Absorb_HeaderLine2">
+												<Size><AbsDimension x="1" y="1"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_Party" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-2"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_Absorb">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="ARTWORK">
+														<Texture setAllPoints="true">
+															<Color r="0.45" g="0.45" b="0.45" a="0.9"/>
+														</Texture>
+													</Layer>
+												</Layers>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_Absorb_DisplayRow">
+												<Size><AbsDimension x="1" y="12"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_HeaderLine2" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-3"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_Absorb">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="ARTWORK">
+														<FontString inherits="GameFontNormalSmall" justifyH="LEFT" text="XPERL_CONF_ABSORB_DISPLAY">
+															<FontHeight>
+																<AbsValue val="12"/>
+															</FontHeight>
+															<Anchors>
+																<Anchor point="LEFT">
+																	<Offset><AbsDimension x="2" y="0"/></Offset>
+																</Anchor>
+															</Anchors>
+														</FontString>
+													</Layer>
+												</Layers>
+											</Frame>
+											<Button name="XPerl_Options_Profiles_Absorb_Texture" inherits="XPerlColorPickerTemplate">
+												<Size><AbsDimension x="100" y="10"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_DisplayRow" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-3"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="OVERLAY">
+														<FontString name="$parentName" inherits="GameFontDisableSmall" justifyH="LEFT" text="XPERL_CONF_ABSORB_TEXTURE_DEFAULT">
+															<Anchors>
+																<Anchor point="LEFT">
+																	<Offset><AbsDimension x="6" y="0"/></Offset>
+																</Anchor>
+																<Anchor point="RIGHT">
+																	<Offset><AbsDimension x="-6" y="0"/></Offset>
+																</Anchor>
+															</Anchors>
+															<Color r="1" g="1" b="1"/>
+														</FontString>
+													</Layer>
+												</Layers>
+												<NormalTexture file="Interface\TargetingFrame\UI-StatusBar"/>
+												<HighlightTexture file="Interface\Addons\XPerl\Images\XPerl_Highlight" alphaMode="ADD">
+													<TexCoords left="0" right="1" top="0.5" bottom="1"/>
+												</HighlightTexture>
+												<Scripts>
+													<OnLoad>
+														self.tooltipText = XPERL_CONF_ABSORB_TEXTURE
+														self:SetHitRectInsets(0, 0, 0, 0)
+														local stray = _G[self:GetName().."Text"]
+														if (stray) then
+															stray:Hide()
+														end
+													</OnLoad>
+													<OnShow>
+														XPerl_Absorb_EnsureConfig(XPerlDB)
+														local tex = XPerlDB.absorb and XPerlDB.absorb.texture
+														local label = _G[self:GetName().."Name"]
+														if (tex) then
+															if (label) then
+																label:SetText(tex[1] or XPERL_CONF_ABSORB_TEXTURE_DEFAULT)
+															end
+															if (tex[2]) then
+																self:SetNormalTexture(tex[2])
+															end
+														elseif (label) then
+															label:SetText(XPERL_CONF_ABSORB_TEXTURE_DEFAULT)
+														end
+													</OnShow>
+													<OnClick>
+														XPerl_Options_Absorb_OpenTexture("absorb")
+													</OnClick>
+												</Scripts>
+											</Button>
+											<Button name="XPerl_Options_Profiles_Absorb_Color" inherits="XPerlColorPickerTemplate">
+												<Anchors>
+													<Anchor point="LEFT" relativeTo="XPerl_Options_Profiles_Absorb_Texture" relativePoint="RIGHT">
+														<Offset><AbsDimension x="8" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_COLOR", true)
+													</OnLoad>
+													<OnShow>
+														XPerl_Absorb_EnsureConfig(XPerlDB)
+														local c = XPerlDB.absorb and XPerlDB.absorb.color
+														if (c) then
+															_G[self:GetName().."_Colour"]:SetVertexColor(c.r, c.g, c.b)
+														end
+													</OnShow>
+													<OnClick>
+														XPerl_Absorb_EnsureConfig(XPerlDB)
+														XPerlLocked = 1
+														XPerl_ColourPicker.ParentFrame = XPerl_Options
+														XPerl_ColourPicker.varGet = function()
+															XPerl_Absorb_EnsureConfig(XPerlDB)
+															return XPerlDB.absorb.color
+														end
+														XPerl_ColourPicker.varSet = function(n)
+															XPerlDB.absorb.color.r = n.r
+															XPerlDB.absorb.color.g = n.g
+															XPerlDB.absorb.color.b = n.b
+															local sw = _G["XPerl_Options_Profiles_Absorb_Color_Colour"]
+															if (sw) then
+																sw:SetVertexColor(n.r, n.g, n.b)
+															end
+															XPerl_Options_Absorb_OnChanged()
+														end
+														XPerl_ColourPicker.alpha = nil
+														XPerl_ColourPicker:Show()
+													</OnClick>
+												</Scripts>
+											</Button>
+											<CheckButton name="XPerl_Options_Profiles_Absorb_ModeSeparate" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_Texture" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-1"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_MODE_SEPARATE", true)
+														self.configBase = "XPerlDB.absorb"
+														self.configIndex = "separateBar"
+														self.configClick = XPerl_Options_Absorb_ModeClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<CheckButton name="XPerl_Options_Profiles_Absorb_ModeOverlay" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_ModeSeparate" relativePoint="TOPLEFT">
+														<Offset><AbsDimension x="138" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_MODE_OVERLAY", true)
+														self.configBase = "XPerlDB.absorb"
+														self.configIndex = "overlay"
+														self.configClick = XPerl_Options_Absorb_ModeClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<Frame name="XPerl_Options_Profiles_Absorb_HeaderLine3">
+												<Size><AbsDimension x="1" y="1"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_ModeSeparate" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-2"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_Absorb">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="ARTWORK">
+														<Texture setAllPoints="true">
+															<Color r="0.45" g="0.45" b="0.45" a="0.9"/>
+														</Texture>
+													</Layer>
+												</Layers>
+											</Frame>
+											<Frame name="XPerl_Options_Profiles_Absorb_HealTitleRow">
+												<Size><AbsDimension x="1" y="12"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_HeaderLine3" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-3"/></Offset>
+													</Anchor>
+													<Anchor point="RIGHT" relativeTo="XPerl_Options_Profiles_Absorb">
+														<Offset><AbsDimension x="-2" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="ARTWORK">
+														<FontString name="XPerl_Options_Profiles_Absorb_HealTitle" inherits="GameFontNormalSmall" justifyH="LEFT" text="XPERL_CONF_ABSORB_HEALABSORB">
+															<FontHeight>
+																<AbsValue val="12"/>
+															</FontHeight>
+															<Anchors>
+																<Anchor point="TOPLEFT">
+																	<Offset><AbsDimension x="2" y="-2"/></Offset>
+																</Anchor>
+															</Anchors>
+														</FontString>
+													</Layer>
+												</Layers>
+											</Frame>
+											<CheckButton name="XPerl_Options_Profiles_Absorb_HealEnable" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOP" relativeTo="XPerl_Options_Profiles_Absorb_HealTitle" relativePoint="TOP">
+														<Offset><AbsDimension x="0" y="9"/></Offset>
+													</Anchor>
+													<Anchor point="LEFT" relativeTo="XPerl_Options_Profiles_Absorb_Enable" relativePoint="LEFT"/>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_ENABLE", true)
+														self.tooltipText = XPERL_CONF_ABSORB_HEALABSORB_DESC
+														self.configBase = "XPerlDB.absorb.healAbsorb"
+														self.configIndex = "enable"
+														self.configClick = XPerl_Options_Absorb_OnChanged
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<Button name="XPerl_Options_Profiles_Absorb_HealTexture" inherits="XPerlColorPickerTemplate">
+												<Size><AbsDimension x="100" y="10"/></Size>
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_HealEnable" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="-138" y="-2"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Layers>
+													<Layer level="OVERLAY">
+														<FontString name="$parentName" inherits="GameFontDisableSmall" justifyH="LEFT" text="XPERL_CONF_ABSORB_TEXTURE_DEFAULT">
+															<Anchors>
+																<Anchor point="LEFT">
+																	<Offset><AbsDimension x="6" y="0"/></Offset>
+																</Anchor>
+																<Anchor point="RIGHT">
+																	<Offset><AbsDimension x="-6" y="0"/></Offset>
+																</Anchor>
+															</Anchors>
+															<Color r="1" g="1" b="1"/>
+														</FontString>
+													</Layer>
+												</Layers>
+												<NormalTexture file="Interface\TargetingFrame\UI-StatusBar"/>
+												<HighlightTexture file="Interface\Addons\XPerl\Images\XPerl_Highlight" alphaMode="ADD">
+													<TexCoords left="0" right="1" top="0.5" bottom="1"/>
+												</HighlightTexture>
+												<Scripts>
+													<OnLoad>
+														self.tooltipText = XPERL_CONF_ABSORB_TEXTURE
+														self:SetHitRectInsets(0, 0, 0, 0)
+														local stray = _G[self:GetName().."Text"]
+														if (stray) then
+															stray:Hide()
+														end
+													</OnLoad>
+													<OnShow>
+														XPerl_Absorb_EnsureConfig(XPerlDB)
+														local tex = XPerlDB.absorb and XPerlDB.absorb.healAbsorb and XPerlDB.absorb.healAbsorb.texture
+														local label = _G[self:GetName().."Name"]
+														if (tex) then
+															if (label) then
+																label:SetText(tex[1] or XPERL_CONF_ABSORB_TEXTURE_DEFAULT)
+															end
+															if (tex[2]) then
+																self:SetNormalTexture(tex[2])
+															end
+														elseif (label) then
+															label:SetText(XPERL_CONF_ABSORB_TEXTURE_DEFAULT)
+														end
+													</OnShow>
+													<OnClick>
+														XPerl_Options_Absorb_OpenTexture("heal")
+													</OnClick>
+												</Scripts>
+											</Button>
+											<Button name="XPerl_Options_Profiles_Absorb_HealColor" inherits="XPerlColorPickerTemplate">
+												<Anchors>
+													<Anchor point="LEFT" relativeTo="XPerl_Options_Profiles_Absorb_HealTexture" relativePoint="RIGHT">
+														<Offset><AbsDimension x="8" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_COLOR", true)
+													</OnLoad>
+													<OnShow>
+														XPerl_Absorb_EnsureConfig(XPerlDB)
+														local c = XPerlDB.absorb and XPerlDB.absorb.healAbsorb and XPerlDB.absorb.healAbsorb.color
+														if (c) then
+															_G[self:GetName().."_Colour"]:SetVertexColor(c.r, c.g, c.b)
+														end
+													</OnShow>
+													<OnClick>
+														XPerl_Absorb_EnsureConfig(XPerlDB)
+														XPerlLocked = 1
+														XPerl_ColourPicker.ParentFrame = XPerl_Options
+														XPerl_ColourPicker.varGet = function()
+															XPerl_Absorb_EnsureConfig(XPerlDB)
+															return XPerlDB.absorb.healAbsorb.color
+														end
+														XPerl_ColourPicker.varSet = function(n)
+															XPerlDB.absorb.healAbsorb.color.r = n.r
+															XPerlDB.absorb.healAbsorb.color.g = n.g
+															XPerlDB.absorb.healAbsorb.color.b = n.b
+															local sw = _G["XPerl_Options_Profiles_Absorb_HealColor_Colour"]
+															if (sw) then
+																sw:SetVertexColor(n.r, n.g, n.b)
+															end
+															XPerl_Options_Absorb_OnChanged()
+														end
+														XPerl_ColourPicker.alpha = nil
+														XPerl_ColourPicker:Show()
+													</OnClick>
+												</Scripts>
+											</Button>
+											<CheckButton name="XPerl_Options_Profiles_Absorb_HealModeSeparate" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_HealTexture" relativePoint="BOTTOMLEFT">
+														<Offset><AbsDimension x="0" y="-1"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_MODE_SEPARATE", true)
+														self.configBase = "XPerlDB.absorb.healAbsorb"
+														self.configIndex = "separateBar"
+														self.configClick = XPerl_Options_Absorb_ModeClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+											<CheckButton name="XPerl_Options_Profiles_Absorb_HealModeOverlay" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_Absorb_HealModeSeparate" relativePoint="TOPLEFT">
+														<Offset><AbsDimension x="138" y="0"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_ABSORB_MODE_OVERLAY", true)
+														self.configBase = "XPerlDB.absorb.healAbsorb"
+														self.configIndex = "overlay"
+														self.configClick = XPerl_Options_Absorb_ModeClick
+													</OnLoad>
+												</Scripts>
+											</CheckButton>
+										</Frames>
+									</Frame>
+								</Frames>
+							</Frame>
+							<Frame name="XPerl_Options_Profiles_QuadBR">
+								<Anchors>
+									<Anchor point="TOPRIGHT" relativeTo="XPerl_Options_Profiles_RowBottom"/>
+									<Anchor point="BOTTOM" relativeTo="XPerl_Options_Profiles_RowBottom"/>
+									<Anchor point="LEFT" relativeTo="XPerl_Options_Profiles_RowBottom" relativePoint="CENTER"/>
+								</Anchors>
+								<Backdrop edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+									<EdgeSize><AbsValue val="9"/></EdgeSize>
+								</Backdrop>
+								<Frames>
+									<Frame name="XPerl_Options_Profiles_HealPrediction">
+										<Anchors>
+											<Anchor point="TOPLEFT">
+												<Offset><AbsDimension x="6" y="-6"/></Offset>
+											</Anchor>
+											<Anchor point="BOTTOMRIGHT">
+												<Offset><AbsDimension x="-6" y="4"/></Offset>
+											</Anchor>
+										</Anchors>
+										<Layers>
+											<Layer level="ARTWORK">
+												<FontString name="XPerl_Options_Profiles_HealPrediction_Title" inherits="GameFontNormal" justifyH="LEFT" text="XPERL_CONF_HEALPREDICTION">
+													<Anchors>
+														<Anchor point="TOPLEFT">
+															<Offset><AbsDimension x="2" y="-2"/></Offset>
+														</Anchor>
+													</Anchors>
+												</FontString>
+											</Layer>
+										</Layers>
+										<Frames>
+											<CheckButton name="XPerl_Options_Profiles_HealPrediction_Enable" inherits="XPerlCheckButtonTemplate">
+												<Anchors>
+													<Anchor point="TOPLEFT" relativeTo="XPerl_Options_Profiles_HealPrediction_Title" relativePoint="TOPLEFT">
+														<Offset><AbsDimension x="138" y="9"/></Offset>
+													</Anchor>
+												</Anchors>
+												<Scripts>
+													<OnLoad>
+														XPerl_OptionsSetMyText(self, "XPERL_CONF_HEALPREDICTION_ENABLE", true)
+														self.tooltipText = XPERL_CONF_HEALPREDICTION_DESC
+													</OnLoad>
+													<OnShow>
+														self:SetChecked(XPerlDB and XPerlDB.healPrediction == 1)
+													</OnShow>
+													<OnClick>
+														if (self:GetChecked()) then
+															XPerlDB.healPrediction = 1
+														else
+															XPerlDB.healPrediction = 0
+														end
+														XPerl_Options_HealPrediction_OnChanged()
+													</OnClick>
+												</Scripts>
+											</CheckButton>
+										</Frames>
+									</Frame>
+								</Frames>
+							</Frame>
+						</Frames>
+					</Frame>
+						</Frames>
+					</Frame>
+				</Frames>
+			</Frame>
 			-- Colour Options
 			<Frame name="$parent_Colour_Options" hidden="true">
 				<Anchors>

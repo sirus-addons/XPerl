@@ -3,9 +3,9 @@
 ## Title-ruRU: X-Perl |cffeda55fМонитор|r
 ## Title-zhCN: X-Perl |cffeda55f团队监控|r
 ## Title-zhTW: X-Perl |cffeda55f團隊生命法力監視|r 由 |cFFFF8080Zek|r 開發
-## Notes: |@Version: 1@|Provides a casting monitor and mana status window.
-## Notes-ruRU: |@Version: 1@|Обеспечивает окном мониторинга применений и маны.
-## Notes-zhTW: |@Version: 1@|提供施法進度以及法力狀態治療監控視窗.
+## Notes: |@Version: 2@|Provides a casting monitor and mana status window.
+## Notes-ruRU: |@Version: 2@|Обеспечивает окном мониторинга применений и маны.
+## Notes-zhTW: |@Version: 2@|提供施法進度以及法力狀態治療監控視窗.
 ## Author: Zek
 ## X-License: GNU GPL v3, 29 June 2007
 ## SavedVariablesPerCharacter: XPerlRaidMonConfig

@@ -3,10 +3,10 @@
 ## Title-ruRU: X-Perl |cffeda55fРейд админ|r
 ## Title-zhCN: X-Perl |cffeda55f团队管理|r
 ## Title-zhTW: X-Perl |cffeda55f團隊管理|r 由 |cFFFF8080Zek|r 開發
-## Notes: |@Version: 1@|Provides useful raid admin tools for todays raid leader.
-## Notes-ruRU: |@Version: 1@|Обеспечивает рейд лидера полезными инструментами рейд админа.
-## Notes-deDE: |@Version: 1@|Bietet Schlachtzugsleitern nützliche Einstellungsmöglichkeiten.
-## Notes-zhTW: |@Version: 1@|提供團隊工具給予領隊方便的整合人員.
+## Notes: |@Version: 2@|Provides useful raid admin tools for todays raid leader.
+## Notes-ruRU: |@Version: 2@|Обеспечивает рейд лидера полезными инструментами рейд админа.
+## Notes-deDE: |@Version: 2@|Bietet Schlachtzugsleitern nützliche Einstellungsmöglichkeiten.
+## Notes-zhTW: |@Version: 2@|提供團隊工具給予領隊方便的整合人員.
 ## Author: Zek
 ## X-License: GNU GPL v3, 29 June 2007
 ## SavedVariablesPerCharacter: XPerl_Admin, XPerl_CheckItems

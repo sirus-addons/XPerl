@@ -3,10 +3,10 @@
 ## Title-ruRU: X-Perl |cffeda55fГруппа|r
 ## Title-zhCN: X-Perl |cffeda55f小队窗|r
 ## Title-zhTW: X-Perl |cffeda55f隊伍框架|r 由 |cFFFF8080Zek|r 開發
-## Notes: |@Version: 1@|Replaces the default party frames.
-## Notes-ruRU: |@Version: 1@|Заменяет стандартные фреймы группы.
-## Notes-deDE: |@Version: 1@|Ersetzt die Gruppenframes.
-## Notes-zhTW: |@Version: 1@|整合預設的隊伍框架顯示.
+## Notes: |@Version: 2@|Replaces the default party frames.
+## Notes-ruRU: |@Version: 2@|Заменяет стандартные фреймы группы.
+## Notes-deDE: |@Version: 2@|Ersetzt die Gruppenframes.
+## Notes-zhTW: |@Version: 2@|整合預設的隊伍框架顯示.
 ## Author: Zek
 ## X-License: GNU GPL v3, 29 June 2007
 ## RequiredDeps: XPerl

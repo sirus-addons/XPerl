@@ -205,6 +205,29 @@ end
 
 local playerClass
 
+local function ResultInRange(v)
+	return v == true or v == 1
+end
+
+local function CacheRangeYardItems()
+	GetItemInfo(34471)
+	GetItemInfo(32698)
+end
+
+local function FixedYardInRange(unit, interact)
+	if (interact ~= 5) then
+		return ResultInRange(CheckInteractDistance(unit, interact))
+	end
+	if (UnitInParty(unit) or UnitInRaid(unit)) then
+		return ResultInRange(UnitInRange(unit))
+	end
+	local ir = IsItemInRange(34471, unit)
+	if (ir == nil) then
+		ir = IsItemInRange(32698, unit)
+	end
+	return ResultInRange(ir)
+end
+
 -- We have a dummy do-nothing function here for classes that don't have range checking
 -- The do-something function is setup after variables_loaded and we work out spell to use just once
 function XPerl_UpdateSpellRange()
@@ -246,19 +269,16 @@ local function DoRangeCheck(unit, opt)
 
 	if (not range) then
 		if (opt.interact) then
-			if (opt.interact == 5) then
-				range = UnitInRange(unit)			-- 40 yards
-			else
-				range = CheckInteractDistance(unit, opt.interact)
-			end
 			-- 1 = Inspect = 30 yards
 			-- 2 = Trade = 11.11 yards
 			-- 3 = Duel = 10 yards
 			-- 4 = Follow = 28 yards
+			-- 5 = ~40 yards (party/raid UnitInRange; item fallback)
+			range = FixedYardInRange(unit, opt.interact) and 1 or 0
 		elseif (opt.spell) then
-			range = IsSpellInRange(opt.spell, unit)
+			range = ResultInRange(IsSpellInRange(opt.spell, unit)) and 1 or 0
 		elseif (opt.item) then
-			range = IsItemInRange(opt.item, unit)
+			range = ResultInRange(IsItemInRange(opt.item, unit)) and 1 or 0
 		else
 			range = 1
 		end
@@ -310,7 +330,7 @@ function XPerl_UpdateSpellRange2(self, overrideUnit, isRaidFrame)
 
 				if (rf.NameFrame.enabled) then
 					-- check for same item/spell. Saves doing the check multiple times
-					if (rf.Main.enabled and (rf.Main.spell == rf.NameFrame.spell) and (rf.Main.item == rf.NameFrame.item) and (rf.Main.PlusHealth == rf.NameFrame.PlusHealth)) then
+					if (rf.Main.enabled and (rf.Main.interact == rf.NameFrame.interact) and (rf.Main.spell == rf.NameFrame.spell) and (rf.Main.item == rf.NameFrame.item) and (rf.Main.PlusHealth == rf.NameFrame.PlusHealth)) then
 						if (mainA) then
 							nameA = rf.NameFrame.FadeAmount
 						end
@@ -324,7 +344,7 @@ function XPerl_UpdateSpellRange2(self, overrideUnit, isRaidFrame)
 				end
 				if (rf.StatsFrame.enabled) then
 					-- check for same item/spell. Saves doing the check multiple times
-					if (rf.Main.enabled and (rf.Main.spell == rf.StatsFrame.spell) and (rf.Main.item == rf.StatsFrame.item) and (rf.Main.PlusHealth == rf.StatsFrame.PlusHealth)) then
+					if (rf.Main.enabled and (rf.Main.interact == rf.StatsFrame.interact) and (rf.Main.spell == rf.StatsFrame.spell) and (rf.Main.item == rf.StatsFrame.item) and (rf.Main.PlusHealth == rf.StatsFrame.PlusHealth)) then
 						if (mainA) then
 							statsA = rf.StatsFrame.FadeAmount
 						end
@@ -386,6 +406,8 @@ function XPerl_StartupSpellRange()
 	if (b) then
 		XPerl_DefaultRangeSpells.ANY.item = b
 	end
+
+	CacheRangeYardItems()
 
 	local rf = conf.rangeFinder
 
@@ -695,18 +717,21 @@ function XPerl_SetHealthBar(self, hp, Max)
 	local bar = self.statsFrame.healthBar
 
 	bar:SetMinMaxValues(0, Max)
-    local percent = max(0, hp / Max) -- Fix for SetFormatted text displaying -21474... for 0 / 0			
-            
-    if (conf.bar.inverse) then
+	local percent = 0
+	if (Max and Max > 0) then
+		percent = min(1, max(0, hp / Max))
+	end
+
+	if (conf.bar.inverse) then
 
 		bar:SetValue(Max - hp)
-		bar.tex:SetTexCoord(0, max(0,(1 - percent)), 0, 1)
-	
+		bar.tex:SetTexCoord(0, max(0, min(1, 1 - percent)), 0, 1)
+
 	else
 
 		bar:SetValue(hp)
-		bar.tex:SetTexCoord(0, max(0, percent), 0, 1)
-	
+		bar.tex:SetTexCoord(0, max(0, min(1, percent)), 0, 1)
+
 	end
 
 	XPerl_ColourHealthBar(self, percent)
@@ -743,6 +768,7 @@ function XPerl_SetHealthBar(self, hp, Max)
 		end
 	end
 	XPerl_SetExpectedHealth(self)
+	XPerl_SetAbsorbBar(self)
 end
 
 ---------------------------------
@@ -859,9 +885,16 @@ end
 -- Minimap Icon
 function XPerl_MinimapButton_OnClick(self, button)
 	GameTooltip:Hide()
+	self.profileHoverLeave = nil
 	if (button == "LeftButton") then
+		if (XPerl_Profiles_HideHoverMenu) then
+			XPerl_Profiles_HideHoverMenu()
+		end
 		XPerl_Toggle()
 	elseif (button == "RightButton") then
+		if (XPerl_Profiles_HideHoverMenu) then
+			XPerl_Profiles_HideHoverMenu()
+		end
 		XPerl_MinimapMenu(self)
 	end
 end
@@ -895,6 +928,16 @@ function XPerl_MinimapMenu_Initialize(self, level)
 			info.func = XPerl_ToggleRaidBuffs
 			UIDropDownMenu_AddButton(info, level)
 
+		elseif (UIDROPDOWNMENU_MENU_VALUE == "profiles") then
+			info = UIDropDownMenu_CreateInfo()
+			info.isTitle = 1
+			info.text = XPERL_MINIMENU_PROFILES
+			UIDropDownMenu_AddButton(info, level)
+
+			if (XPerl_Profiles_AddMinimapMenuButtons) then
+				XPerl_Profiles_AddMinimapMenuButtons(level)
+			end
+
 		elseif (UIDROPDOWNMENU_MENU_VALUE == "raidsort") then
 
 			info = UIDropDownMenu_CreateInfo()
@@ -927,6 +970,15 @@ function XPerl_MinimapMenu_Initialize(self, level)
 	info.func = XPerl_Toggle
 	info.text = XPERL_MINIMENU_OPTIONS
 	UIDropDownMenu_AddButton(info)
+
+	if (XPerl_Profiles_HasProfiles and XPerl_Profiles_HasProfiles()) then
+		info = UIDropDownMenu_CreateInfo()
+		info.notCheckable = 1
+		info.text = XPERL_MINIMENU_PROFILES
+		info.hasArrow = 1
+		info.value = "profiles"
+		UIDropDownMenu_AddButton(info)
+	end
 
 	if (XPerl_ToggleRaidBuffs) then
 		info = UIDropDownMenu_CreateInfo()
@@ -1097,16 +1149,63 @@ local function DiffColour(val)
 	return format("|c00%02X%02X%02X", 255 * r, 255 * g, 255 * b)
 end
 
+-- XPerl_MinimapButton_OnUpdate
+function XPerl_MinimapButton_OnUpdate(self, elapsed)
+	if (XPerl_Profiles_IsHoverMenuOpen and XPerl_Profiles_IsHoverMenuOpen()) then
+		if (XPerl_Profiles_IsProfileMenuHovered and XPerl_Profiles_IsProfileMenuHovered(self)) then
+			self.profileHoverLeave = 0
+			return
+		end
+		self.profileHoverLeave = (self.profileHoverLeave or 0) + elapsed
+		if (self.profileHoverLeave >= 0.3) then
+			self.profileHoverLeave = nil
+			if (XPerl_Profiles_HideHoverMenu) then
+				XPerl_Profiles_HideHoverMenu()
+			end
+			if (not self.dragging) then
+				self:SetScript("OnUpdate", nil)
+			end
+		end
+	elseif (not self.dragging) then
+		self:SetScript("OnUpdate", nil)
+	end
+end
+
 -- XPerl_MinimapButton_OnEnter
 function XPerl_MinimapButton_OnEnter(self)
 	if (self.dragging) then
 		return
 	end
 
+	self.profileHoverLeave = nil
 	XPerl_Tutorial(1)			-- Minimap Icon/Options
 
-	GameTooltip:SetOwner(self or UIParent, "ANCHOR_LEFT")
-	XPerl_MinimapButton_Details(GameTooltip)
+	if (XPerl_Profiles_ShowHoverMenu and XPerl_Profiles_HasProfiles and XPerl_Profiles_HasProfiles()) then
+		GameTooltip:Hide()
+		XPerl_Profiles_ShowHoverMenu(self)
+	else
+		if (XPerl_Profiles_HideHoverMenu) then
+			XPerl_Profiles_HideHoverMenu()
+		end
+		GameTooltip:SetOwner(self or UIParent, "ANCHOR_LEFT")
+		XPerl_MinimapButton_Details(GameTooltip)
+	end
+end
+
+-- XPerl_MinimapButton_OnLeave
+function XPerl_MinimapButton_OnLeave(self)
+	if (not self.dragging) then
+		if (XPerl_Profiles_IsHoverMenuOpen and XPerl_Profiles_IsHoverMenuOpen()) then
+			self.profileHoverLeave = 0
+			self:SetScript("OnUpdate", XPerl_MinimapButton_OnUpdate)
+		else
+			self.profileHoverLeave = nil
+			if (not self.dragging) then
+				self:SetScript("OnUpdate", nil)
+			end
+		end
+	end
+	GameTooltip:Hide()
 end
 
 -- XPerl_MinimapButton_Details
@@ -1897,30 +1996,35 @@ local RaidFrameIgnores = {
 }
 
 -- BuffException
+-- Returns: name, rank, buff, count, debuffType, dur, max, isMine, isStealable, index[, spellId]
+-- spellId is the 11th UnitAura/UnitDebuff return when the client provides it (same call as name).
 local showInfo
 local function BuffException(unit, index, flag, func, exceptions, raidFrames)
-	local name, rank, buff, count, debuffType, dur, max, isMine, isStealable
+	local name, rank, buff, count, debuffType, dur, max, isMine, isStealable, _, spellId
 	if (flag ~= "RAID") then
 		-- Not filtered, just return it
-		name, rank, buff, count, debuffType, dur, max, isMine, isStealable = func(unit, index)
-		return name, rank, buff, count, debuffType, dur, max, isMine, isStealable, index
+		name, rank, buff, count, debuffType, dur, max, isMine, isStealable, _, spellId = func(unit, index)
+		return name, rank, buff, count, debuffType, dur, max, isMine, isStealable, index, spellId
 	end
 
-	name, rank, buff, count, debuffType, dur, max, isMine, isStealable = func(unit, index, "RAID")
+	name, rank, buff, count, debuffType, dur, max, isMine, isStealable, _, spellId = func(unit, index, "RAID")
 	if (buff) then
 		-- We need the index of the buff unfiltered later for tooltips
 		for i = 1,1000 do
-			local name1, rank1, buff1, count1, debuffType1, dur1, max1, isMine1, isStealable1 = func(unit, i)
+			local name1, rank1, buff1, count1, debuffType1, dur1, max1, isMine1, isStealable1, _, spellId1 = func(unit, i)
 			if (not name1) then
 				break
 			end
 			if (name == name1 and rank == rank1 and buff == buff1 and count == count1 and isMine == isMine1) then
 				index = i
+				if (spellId1) then
+					spellId = spellId1
+				end
 				break
 			end
 		end
 
-		return name, rank, buff, count, debuffType, dur, max, isMine, isStealable, index
+		return name, rank, buff, count, debuffType, dur, max, isMine, isStealable, index, spellId
 	end
 
 	-- See how many filtered buffs WoW has returned by default
@@ -1939,7 +2043,7 @@ local function BuffException(unit, index, flag, func, exceptions, raidFrames)
 	local classExceptions = exceptions[playerClass]
 	local allExceptions = exceptions.ALL
 	for i = 1,1000 do
-		name, rank, buff, count, debuffType, dur, max, isMine, isStealable = func(unit, i)
+		name, rank, buff, count, debuffType, dur, max, isMine, isStealable, _, spellId = func(unit, i)
 		if (not name) then
 			break
 		end
@@ -1964,7 +2068,7 @@ local function BuffException(unit, index, flag, func, exceptions, raidFrames)
 		if (good) then
 			foundValid = foundValid + 1
 			if (foundValid + normalBuffFilterCount == index) then
-				return name, rank, buff, count, debuffType, dur, max, isMine, isStealable, i
+				return name, rank, buff, count, debuffType, dur, max, isMine, isStealable, i, spellId
 			end
 		end
 	end
@@ -1972,17 +2076,17 @@ end
 
 -- DebuffException
 local function DebuffException(unit, start, flag, func, raidFrames)
-	local name, rank, buff, count, debuffType, dur, max, caster, isStealable, index
+	local name, rank, buff, count, debuffType, dur, max, caster, isStealable, index, spellId
 	local valid = 0
 	for i = 1,1000 do
-		name, rank, buff, count, debuffType, dur, max, caster, isStealable, index = BuffException(unit, i, flag, func, DebuffExceptions, raidFrames)
+		name, rank, buff, count, debuffType, dur, max, caster, isStealable, index, spellId = BuffException(unit, i, flag, func, DebuffExceptions, raidFrames)
 		if (not name) then
 			break
 		end
 		if (not SeasonalDebuffs[name] and not (raidFrames and RaidFrameIgnores[name])) then
 			valid = valid + 1
 			if (valid == start) then
-				return name, rank, buff, count, debuffType, dur, max, caster, isStealable, index
+				return name, rank, buff, count, debuffType, dur, max, caster, isStealable, index, spellId
 			end
 		end
 	end
@@ -2008,6 +2112,9 @@ function XPerl_TooltipSetUnitBuff(self, unit, ind, filter, raidFrames)
 	if (name and index) then
 		if (Utopia_SetUnitBuff) then
 			Utopia_SetUnitBuff(self, unit, index)
+			if (XPerl_AddBuffTooltipExtras) then
+				XPerl_AddBuffTooltipExtras(self, unit, index, filter or "HELPFUL")
+			end
 		else
 			self:SetUnitBuff(unit, index)
 		end
@@ -2021,6 +2128,9 @@ function XPerl_TooltipSetUnitDebuff(self, unit, ind, filter, raidFrames)
 	if (name and index) then
 		if (Utopia_SetUnitDebuff) then
 			Utopia_SetUnitDebuff(self, unit, index)
+			if (XPerl_AddBuffTooltipExtras) then
+				XPerl_AddBuffTooltipExtras(self, unit, index, filter or "HARMFUL")
+			end
 		else
 			self:SetUnitDebuff(unit, index)
 		end
@@ -2483,6 +2593,9 @@ function XPerl_GetBuffButton(self, buffnum, debuff, createIfAbsent, newID)
 		button = CreateFrame("Button", "XPerlBuff"..buffIconCount, parent, format("XPerl_Cooldown_%sTemplate", buffType))
 		button:Hide()
 		--button.cooldown.noCooldownCount = true				-- OmniCC to NOT show cooldown
+		if (button.cooldown) then
+			button.cooldown:EnableMouse(false)
+		end
 
 		if (setup.rightClickable) then
 			button:RegisterForClicks("RightButtonUp")
@@ -2506,12 +2619,32 @@ function XPerl_GetBuffButton(self, buffnum, debuff, createIfAbsent, newID)
 			for k,v in pairs (setup.debuffScripts) do
 				button:SetScript(k, v)
 			end
+			button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+			local prevClick = button:GetScript("OnClick")
+			button:SetScript("OnClick", function(btn, mouseButton)
+				if (XPerl_HiddenDebuffs_HandleClick and XPerl_HiddenDebuffs_HandleClick(btn, mouseButton)) then
+					return
+				end
+				if (prevClick) then
+					prevClick(btn, mouseButton)
+				end
+			end)
 		else
 			--buffFrame.UpdateTooltip = setup.updateTooltipBuff
 			button.UpdateTooltip = setup.updateTooltipBuff
 			for k,v in pairs (setup.buffScripts) do
 				button:SetScript(k, v)
 			end
+			button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+			local prevClick = button:GetScript("OnClick")
+			button:SetScript("OnClick", function(btn, mouseButton)
+				if (XPerl_HiddenDebuffs_HandleClick and XPerl_HiddenDebuffs_HandleClick(btn, mouseButton)) then
+					return
+				end
+				if (prevClick) then
+					prevClick(btn, mouseButton)
+				end
+			end)
 		end
 		buffList[buffnum] = button
 
@@ -2917,7 +3050,7 @@ function XPerl_Unit_UpdateBuffs(self, maxBuffs, maxDebuffs, castableOnly, curabl
 				-- our own buffs.
 				for buffnum = 1,maxBuffs do
 					local filter = castableOnly == 1 and "RAID" or nil
-					local name, rank, buff, count, _, duration, endTime, isMine, isStealable = XPerl_UnitBuff(partyid, buffnum, filter)
+					local name, rank, buff, count, _, duration, endTime, isMine, isStealable, auraIndex, spellId = XPerl_UnitBuff(partyid, buffnum, filter)
 					if (not name) then
 						if (mine == 1) then
 							maxBuffs = buffnum - 1
@@ -2930,9 +3063,13 @@ function XPerl_Unit_UpdateBuffs(self, maxBuffs, maxDebuffs, castableOnly, curabl
 						isMine = isMine == "player" or isMine == "vehicle"
 					end
 
-					if (buff and (((mine == 1) and (isMine or isStealable)) or ((mine == 2) and not (isMine or isStealable)))) then
+					if (buff and (((mine == 1) and (isMine or isStealable)) or ((mine == 2) and not (isMine or isStealable))) and not (XPerl_HiddenDebuffs_ShouldHide and XPerl_HiddenDebuffs_ShouldHide(self, name, spellId, false))) then
 						local button = XPerl_GetBuffButton(self, buffIconIndex, 0, true, buffnum)
 						button.filter = filter
+						button.buffName = name
+						button.buffSpellId = spellId
+						button.xperlIsDebuff = false
+						button.xperlUnitFrame = self
 						button:SetAlpha(1)
 
 						buffs = buffs + 1
@@ -3030,7 +3167,7 @@ function XPerl_Unit_UpdateBuffs(self, maxBuffs, maxDebuffs, castableOnly, curabl
 
 				for buffnum = 1,maxDebuffs do
 					local filter = (isFriendly and curableOnly == 1 or castableOnly == 1) and "RAID" or nil
-					local name, rank, debuff, debuffApplications, debuffType, duration, endTime, isMine, isStealable = XPerl_UnitDebuff(partyid, buffnum, filter)
+					local name, rank, debuff, debuffApplications, debuffType, duration, endTime, isMine, isStealable, auraIndex, spellId = XPerl_UnitDebuff(partyid, buffnum, filter)
 					if (not name) then
 						if (mine == 1) then
 							maxDebuffs = buffnum - 1
@@ -3044,9 +3181,13 @@ function XPerl_Unit_UpdateBuffs(self, maxBuffs, maxDebuffs, castableOnly, curabl
 						isMine = isMine == "player"
 					end
 
-					if (debuff and (((mine == 1) and isMine) or ((mine == 2) and not isMine))) then
+					if (debuff and (((mine == 1) and isMine) or ((mine == 2) and not isMine)) and not (XPerl_HiddenDebuffs_ShouldHide and XPerl_HiddenDebuffs_ShouldHide(self, name, spellId, true))) then
 						local button = XPerl_GetBuffButton(self, buffIconIndex, 1, true, buffnum)
 						button.filter = filter
+						button.debuffName = name
+						button.debuffSpellId = spellId
+						button.xperlIsDebuff = true
+						button.xperlUnitFrame = self
 						button:SetAlpha(1)
 
 						debuffs = debuffs + 1
@@ -3238,15 +3379,25 @@ end
 
 -- XPerl_ProtectedCall
 function XPerl_ProtectedCall(func, self)
-	if (func) then
-		if (InCombatLockdown()) then
-			if (self) then
-				tinsert(XPerl_OutOfCombatQueue, {func, self})
-			else
-				tinsert(XPerl_OutOfCombatQueue, func)
+	XPerl_QueueOutOfCombat(func, self)
+end
+
+function XPerl_QueueOutOfCombat(func, arg)
+	if (not func) then
+		return
+	end
+	if (InCombatLockdown()) then
+		for i,v in ipairs(XPerl_OutOfCombatQueue) do
+			if (v[1] == func and v[2] == arg) then
+				return
 			end
+		end
+		tinsert(XPerl_OutOfCombatQueue, {func, arg})
+	else
+		if (arg == nil) then
+			func()
 		else
-			func(self)
+			func(arg)
 		end
 	end
 end
@@ -3844,6 +3995,7 @@ end
 
 -- XPerl_Unit_UpdateReadyState
 function XPerl_Unit_UpdateReadyState(self)
+	if not conf then return end
 	local status = conf.showReadyCheck and self.partyid and GetReadyCheckStatus(self.partyid)
 	if (status) then
 		self.statsFrame.ready:Show()
@@ -4087,6 +4239,8 @@ XPerl_ExpectedUnitHealth = XPerl_UnitHealth
 function XPerl_SetExpectedHealth()
 end
 
+-- Absorb / heal-absorb bars: XPerl_Absorb.lua (XPerl_SetAbsorbBar)
+
 function XPerl_Load_LQHLHC()
 	if (LibStub or LoadAddOn("LibStub")) then
 		local lqh = 1
@@ -4147,9 +4301,12 @@ function XPerl_Load_LQHLHC()
 			end
 		end
 
-		-- HealComm interface
-		LoadAddOn("LibHealComm-4.0")
+		-- HealComm interface (LibHealComm-4.0 embedded in XPerl/libs; LoadAddOn keeps OptionalDeps fallback)
 		local HealComm4 = LibStub and LibStub("LibHealComm-4.0", true)
+		if (not HealComm4) then
+			LoadAddOn("LibHealComm-4.0")
+			HealComm4 = LibStub and LibStub("LibHealComm-4.0", true)
+		end
 		local HealComm3
 		if (not HealComm4) then
 			LoadAddOn("LibHealComm-3.0")
@@ -4245,6 +4402,10 @@ function XPerl_Load_LQHLHC()
 
 			-- XPerl_ExpectedUnitHealth
 			function XPerl_ExpectedUnitHealth(unit)
+				-- UnitHealth/UnitGUID reject nil (Usage error); empty party slots have partyid = nil
+				if (not unit) then
+					return 0
+				end
 				local health = XPerl_UnitHealth(unit)
 				if (HealComm3) then
 					local incoming = HealComm3:UnitIncomingHealGet(unit, GetTime() + 100) or 0
@@ -4266,16 +4427,48 @@ function XPerl_Load_LQHLHC()
 
 			-- XPerl_SetExpectedHealth
 			function XPerl_SetExpectedHealth(self)
-				local bar = self.statsFrame.expectedHealth
-				if (bar) then
-					local expectedHealth = XPerl_ExpectedUnitHealth(self.partyid)
-					if (expectedHealth == XPerl_UnitHealth(self.partyid)) then
-						bar:Hide()
-					else
-						local healthMax = UnitHealthMax(self.partyid)
-						bar:Show()
-						bar:SetMinMaxValues(0, healthMax)
-						bar:SetValue(expectedHealth)
+				local bar = self.statsFrame and self.statsFrame.expectedHealth
+				if (not bar) then
+					return
+				end
+				if (not conf or conf.healPrediction ~= 1) then
+					bar:Hide()
+					return
+				end
+				local unit = self.partyid
+				if (not unit) then
+					bar:Hide()
+					return
+				end
+				local expectedHealth = XPerl_ExpectedUnitHealth(unit)
+				if (expectedHealth == XPerl_UnitHealth(unit)) then
+					bar:Hide()
+				else
+					local healthMax = UnitHealthMax(unit)
+					bar:Show()
+					bar:SetMinMaxValues(0, healthMax)
+					bar:SetValue(expectedHealth)
+				end
+			end
+
+			function XPerl_HealPrediction_RefreshAll()
+				local function bump(frame)
+					if (frame and frame.partyid) then
+						XPerl_SetExpectedHealth(frame)
+					end
+				end
+				bump(XPerl_Player)
+				bump(XPerl_Player_Pet)
+				bump(XPerl_Target)
+				bump(XPerl_Focus)
+				bump(XPerl_TargetTarget)
+				for i = 1, 4 do
+					bump(_G["XPerl_party"..i])
+					bump(_G["XPerl_partypet"..i])
+				end
+				if (GetNumRaidMembers() > 0 and XPerl_Raid_GetUnitFrameByUnit) then
+					for i = 1, GetNumRaidMembers() do
+						bump(XPerl_Raid_GetUnitFrameByUnit("raid"..i))
 					end
 				end
 			end
@@ -4549,4 +4742,97 @@ function XPerl_Unit_ThreatStatus(self, relative, immediate)
 
 		t:Hide()
 	end
+end
+
+do
+    local partyBootstrap = CreateFrame("Frame", "XPerl_PartyBootstrap")
+    partyBootstrap:RegisterEvent("ADDON_LOADED")
+    partyBootstrap:RegisterEvent("PLAYER_ENTERING_WORLD")
+    partyBootstrap:RegisterEvent("PARTY_MEMBERS_CHANGED")
+    partyBootstrap:RegisterEvent("RAID_ROSTER_UPDATE")
+
+    -- Per-slot: each SecureParty child needs Set_Bits1 once per session.
+    -- After party1..4 have all been laid out, roster stays on light refresh.
+    local partyLayoutDone = {}
+
+    local function PartyNeedsFullLayout()
+        for i = 1, 4 do
+            if UnitExists("party"..i) and not partyLayoutDone[i] then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function MarkPartyLayoutDone()
+        for i = 1, 4 do
+            if UnitExists("party"..i) then
+                partyLayoutDone[i] = true
+            end
+        end
+    end
+
+    local function SafePartyLayout()
+        if InCombatLockdown() then
+            XPerl_QueueOutOfCombat(SafePartyLayout)
+            return
+        end
+        if type(XPerl_Party_Set_Bits) == "function" then
+            XPerl_Party_Set_Bits()
+        end
+        if type(XPerl_Party_UpdateDisplayAll) == "function" then
+            XPerl_Party_UpdateDisplayAll()
+        end
+        MarkPartyLayoutDone()
+    end
+
+    local function SafePartyRoster()
+        if PartyNeedsFullLayout() then
+            SafePartyLayout()
+            return
+        end
+        if type(XPerl_Party_RosterRefresh) == "function" then
+            XPerl_Party_RosterRefresh()
+            return
+        end
+        SafePartyLayout()
+    end
+
+    function partyBootstrap:Schedule(kind, delay)
+        self._kind = kind
+        self._delay = math.max(tonumber(delay) or 0.4, 0.1)
+        self:SetScript("OnUpdate", function(s, elapsed)
+            s._delay = s._delay - elapsed
+            if s._delay <= 0 then
+                s:SetScript("OnUpdate", nil)
+                if s._kind == "roster" then
+                    SafePartyRoster()
+                else
+                    SafePartyLayout()
+                end
+            end
+        end)
+    end
+
+    partyBootstrap:SetScript("OnEvent", function(self, event, arg1)
+        if event == "ADDON_LOADED" then
+            if arg1 ~= "XPerl_Party" then return end
+            self:Schedule("layout", 0.3)
+            return
+        end
+
+        if event == "PLAYER_ENTERING_WORLD" then
+            if PartyNeedsFullLayout() then
+                self:Schedule("layout", 0.6)
+            else
+                self:Schedule("roster", 0.6)
+            end
+            return
+        end
+
+        if event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
+            self:Schedule("roster", 0.8)
+            return
+        end
+    end)
 end

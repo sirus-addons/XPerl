@@ -626,7 +626,7 @@ function cast:UNIT_HEALTH(unit)
 	end
 end
 
-cast.UNIT_HEALTHMAX = cast.UNIT_HEALTH
+cast.UNIT_MAXHEALTH = cast.UNIT_HEALTH
 
 -- cast:OnUpdate
 function cast:OnUpdate(elapsed)
@@ -687,10 +687,23 @@ local function SetTargetConfig(self)
 	self.target:SetHeight(config.UnitHeight)
 end
 
+function cast.FlushPendingTargetConfigs()
+	local pending = cast._pendingTargetConfig
+	if (not pending) then
+		return
+	end
+	for frame in pairs(pending) do
+		pending[frame] = nil
+		if (frame and frame.target) then
+			SetTargetConfig(frame)
+		end
+	end
+end
+
 -- cast:Init
 function cast:Init()
 	if (InCombatLockdown()) then
-		tinsert(XPerl_OutOfCombatQueue, {cast.Init, self})
+		XPerl_QueueOutOfCombat(cast.Init, self)
 		return
 	end
 
@@ -717,7 +730,11 @@ function cast:Init()
 		self:SetAttribute("initial-width", config.UnitWidth)
 
 		if (InCombatLockdown()) then
-			tinsert(XPerl_OutOfCombatQueue, {SetTargetConfig, self})
+			if (not cast._pendingTargetConfig) then
+				cast._pendingTargetConfig = {}
+			end
+			cast._pendingTargetConfig[self] = true
+			XPerl_QueueOutOfCombat(cast.FlushPendingTargetConfigs)
 		else
 			SetTargetConfig(self)
 		end
@@ -754,7 +771,7 @@ end
 -- cast:SetUnitSizes
 function cast:SetUnitSizes()
 	if (InCombatLockdown()) then
-		tinsert(XPerl_OutOfCombatQueue, {cast.SetUnitSizes, self})
+		XPerl_QueueOutOfCombat(cast.SetUnitSizes, self)
 		return
 	end
 
@@ -776,7 +793,7 @@ end
 function cast:EnableDisable()
 
 	local events = {"UNIT_MANA", "UNIT_MAXMANA", "UNIT_RAGE", "UNIT_MAXRAGE", "UNIT_ENERGY", "UNIT_MAXENERGY",
-			"UNIT_HEALTH", "UNIT_HEALTHMAX", "UNIT_TARGET", "PLAYER_TARGET_CHANGED",
+			"UNIT_HEALTH", "UNIT_MAXHEALTH", "UNIT_TARGET", "PLAYER_TARGET_CHANGED",
 			"UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
 			"UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_SUCCEEDED",
 			"UNIT_SPELLCAST_CHANNEL_UPDATE", "UNIT_SPELLCAST_CHANNEL_STOP", "PLAYER_ENTERING_WORLD", "RAID_ROSTER_UPDATE",
@@ -801,7 +818,7 @@ end
 -- cast:SetFrameSizes
 function cast:SetFrameSizes()
 	if (InCombatLockdown()) then
-		tinsert(XPerl_OutOfCombatQueue, {cast.SetFrameSizes, self})
+		XPerl_QueueOutOfCombat(cast.SetFrameSizes, self)
 		return
 	end
 

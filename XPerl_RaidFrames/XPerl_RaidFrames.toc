@@ -3,10 +3,10 @@
 ## Title-ruRU: X-Perl |cffeda55fРейд|r
 ## Title-zhCN: X-Perl |cffeda55f团队窗|r
 ## Title-zhTW: X-Perl |cffeda55f團隊框架|r 由 |cFFFF8080Zek|r 開發
-## Notes: |@Version: 1@|X-Perl Raid frames
-## Notes-ruRU: |@Version: 1@|Фреймы рейда.
-## Notes-deDE: |@Version: 1@|X-Perl UnitFrames Schlachtzugframes
-## Notes-zhTW: |@Version: 1@|X-Perl 團隊框架
+## Notes: |@Version: 2@|X-Perl Raid frames
+## Notes-ruRU: |@Version: 2@|Фреймы рейда.
+## Notes-deDE: |@Version: 2@|X-Perl UnitFrames Schlachtzugframes
+## Notes-zhTW: |@Version: 2@|X-Perl 團隊框架
 ## Author: Zek
 ## X-License: GNU GPL v3, 29 June 2007
 ## Dependencies: XPerl
